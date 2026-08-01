@@ -1,0 +1,64 @@
+import { NextResponse } from 'next/server';
+import { getSupabaseClient } from '@/lib/db';
+
+export async function GET(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const supabase = getSupabaseClient();
+    
+    // Join with users table to get assignee names
+    const { data, error } = await supabase
+      .from('tasks')
+      .select('*, assignee:users!tasks_assigned_to_fkey (name, role)')
+      .eq('lead_id', id)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    return NextResponse.json({ tasks: data || [] });
+  } catch (error: any) {
+    console.error('Failed to fetch lead tasks:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    const { id } = await params;
+    const supabase = getSupabaseClient();
+    const body = await request.json();
+    const { description, assigned_to, due_date } = body;
+
+    if (!description) {
+      return NextResponse.json({ error: 'Description is required' }, { status: 400 });
+    }
+
+    const { data, error } = await supabase
+      .from('tasks')
+      .insert([
+        {
+          id: crypto.randomUUID(),
+          lead_id: id,
+          description,
+          assigned_to: assigned_to || null,
+          due_date: due_date || null,
+          status: 'pending'
+        }
+      ])
+      .select('*, assignee:users!tasks_assigned_to_fkey (name, role)')
+      .single();
+
+    if (error) throw error;
+
+    return NextResponse.json({ success: true, task: data });
+  } catch (error: any) {
+    console.error('Failed to create lead task:', error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}

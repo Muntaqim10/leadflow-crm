@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#3B82F6;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#38BDF8;stop-opacity:1" />
+    </linearGradient>
+    <clipPath id="round">
+      <rect width="100" height="100" rx="22" ry="22"/>
+    </clipPath>
+  </defs>
+
+  <!-- Gradient background with rounded corners -->
+  <rect width="100" height="100" rx="22" ry="22" fill="url(#grad)"/>
+
+  <!-- Lucide TrendingUp icon scaled and centered (original viewBox 0 0 24 24, centered in 100x100) -->
+  <g transform="translate(50,50) scale(3.1) translate(-12,-12)" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <polyline points="22 7 13.5 15.5 8.5 10.5 2 17" />
+    <polyline points="16 7 22 7 22 13" />
+  </g>
+</svg>
