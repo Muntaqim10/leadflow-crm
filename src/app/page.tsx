@@ -4078,7 +4078,7 @@ export default function App() {
               {/* Sidebar */}
             <div className="w-72 bg-white border-r border-slate-200 flex flex-col shadow-sm relative z-10">
               <div className="h-16 flex items-center px-6 border-b border-slate-200">
-                <h2 className="text-xl font-bold text-slate-900 tracking-tight">Configuration</h2>
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">Settings</h2>
               </div>
               
               <div className="flex-1 overflow-y-auto p-4 space-y-8">
