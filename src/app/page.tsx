@@ -4232,6 +4232,7 @@ export default function App() {
                       <option>Sales Agent</option>
                       <option>Sales Manager</option>
                       <option>Director of Sales</option>
+                      <option>General Manager</option>
                       <option>Front Desk Supervisor</option>
                     </select>
                   </div>
@@ -4260,6 +4261,7 @@ export default function App() {
                       <option>Sales Agent</option>
                       <option>Sales Manager</option>
                       <option>Director of Sales</option>
+                      <option>General Manager</option>
                       <option>Front Desk Supervisor</option>
                     </select>
                   </div>
