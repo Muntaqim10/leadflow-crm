@@ -388,6 +388,8 @@ export default function App() {
   const canManageHotelDetails = isMuntaqim;
 
   // Settings State
+  const [profileName, setProfileName] = useState('');
+  const [profileEmail, setProfileEmail] = useState('');
   const [profilePhone, setProfilePhone] = useState('');
   const [globalTaxRate, setGlobalTaxRate] = useState('6.0');
   const [globalGratuity, setGlobalGratuity] = useState('20.0');
@@ -801,6 +803,12 @@ export default function App() {
       if (params.get('admin') === 'true' || params.get('admin') === '1') {
         setIsAdmin(true);
       }
+    }
+    
+    // Initialize profile fields if session is available
+    if (session) {
+      setProfileName(prev => prev || session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || '');
+      setProfileEmail(prev => prev || session?.user?.email || '');
     }
   }, [session]);
 
@@ -4158,11 +4166,11 @@ export default function App() {
                     <div className="grid gap-4">
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Full Name</label>
-                        <input type="text" className="w-full border border-slate-300 rounded-md p-2 text-sm" defaultValue={session?.user?.user_metadata?.name || ''} disabled />
+                        <input type="text" className="w-full border border-slate-300 rounded-md p-2 text-sm" value={profileName} onChange={e => setProfileName(e.target.value)} placeholder="Your Name" />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Email Address</label>
-                        <input type="email" disabled className="w-full border border-slate-200 bg-slate-50 rounded-md p-2 text-sm text-slate-500" defaultValue={session?.user?.email || ''} />
+                        <input type="email" className="w-full border border-slate-300 rounded-md p-2 text-sm" value={profileEmail} onChange={e => setProfileEmail(e.target.value)} placeholder="you@example.com" />
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Phone Number</label>
@@ -4264,13 +4272,14 @@ export default function App() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
-                    <select className="w-full border border-slate-300 rounded-md p-2 text-sm" value={newUserRole} onChange={e => setNewUserRole(e.target.value)}>
-                      <option>General Manager</option>
-                      <option>Sales Manager</option>
-                      <option>Director of Sales</option>
-                      <option>Sales Coordinator</option>
-                      <option>Front Desk Supervisor</option>
-                    </select>
+                    <input type="text" list="roles-list" className="w-full border border-slate-300 rounded-md p-2 text-sm" value={newUserRole} onChange={e => setNewUserRole(e.target.value)} placeholder="e.g. Sales Manager" />
+                    <datalist id="roles-list">
+                      <option value="General Manager" />
+                      <option value="Sales Manager" />
+                      <option value="Director of Sales" />
+                      <option value="Sales Coordinator" />
+                      <option value="Front Desk Supervisor" />
+                    </datalist>
                   </div>
                   <div className="flex gap-3 justify-end mt-6">
                     <button onClick={() => setIsAddUserModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-md">Cancel</button>
@@ -4293,13 +4302,7 @@ export default function App() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
-                    <select className="w-full border border-slate-300 rounded-md p-2 text-sm" value={editUserRole} onChange={e => setEditUserRole(e.target.value)}>
-                      <option>General Manager</option>
-                      <option>Sales Manager</option>
-                      <option>Director of Sales</option>
-                      <option>Sales Coordinator</option>
-                      <option>Front Desk Supervisor</option>
-                    </select>
+                    <input type="text" list="roles-list" className="w-full border border-slate-300 rounded-md p-2 text-sm" value={editUserRole} onChange={e => setEditUserRole(e.target.value)} placeholder="e.g. Sales Manager" />
                   </div>
                   <div className="flex gap-3 justify-end mt-6">
                     <button onClick={() => setIsEditUserModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-md">Cancel</button>
