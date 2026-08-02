@@ -4073,8 +4073,9 @@ export default function App() {
       {/* Settings Modal */}
       {isSettingsModalOpen && (
         <>
-          <div className="fixed inset-0 z-[100] bg-slate-50 flex overflow-hidden animate-in fade-in zoom-in-95 duration-200">
-            {/* Sidebar */}
+          <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 sm:p-6 lg:p-8 animate-in fade-in duration-200">
+            <div className="bg-slate-50 w-full max-w-6xl h-[85vh] rounded-2xl shadow-2xl flex overflow-hidden animate-in zoom-in-95 duration-200 border border-slate-700/10">
+              {/* Sidebar */}
             <div className="w-72 bg-white border-r border-slate-200 flex flex-col shadow-sm relative z-10">
               <div className="h-16 flex items-center px-6 border-b border-slate-200">
                 <h2 className="text-xl font-bold text-slate-900 tracking-tight">Configuration</h2>
@@ -4295,6 +4296,7 @@ export default function App() {
                 )}
               </div>
             </div>
+          </div>
           </div>
 
           {/* Add User Modal */}
