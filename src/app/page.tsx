@@ -4090,7 +4090,7 @@ export default function App() {
                   <div className="space-y-1">
                     <button
                       onClick={() => setActiveSettingsTab('global')}
-                      className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeSettingsTab === 'global' ? 'bg-blue-50 text-blue-700' : 'text-slate-100 hover:bg-slate-100 hover:text-slate-900'}`}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeSettingsTab === 'global' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
                     >
                       Global Variables
                     </button>
