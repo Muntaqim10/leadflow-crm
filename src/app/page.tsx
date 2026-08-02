@@ -378,7 +378,7 @@ export default function App() {
   const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'global' | 'users' | 'hotel'>('profile');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'global' | 'users' | 'hotel' | 'pipelines' | 'integrations'>('profile');
 
   // Authorization Helpers
   const currentUserEmail = session?.user?.email || '';
