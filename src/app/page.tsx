@@ -3206,7 +3206,7 @@ export default function App() {
                                         <span className="text-[9px] font-semibold text-emerald-600">${Math.round(revenue).toLocaleString()}</span>
                                       </div>
                                     ) : (
-                                      <span className="text-[9px] text-slate-400 self-start mt-2">No arrivals</span>
+                                      <span className="text-[9px] text-slate-400 self-start mt-2">No leads</span>
                                     )}
                                   </div>
                                 );
