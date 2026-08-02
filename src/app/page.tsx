@@ -4064,57 +4064,93 @@ export default function App() {
 
       {/* Settings Modal */}
       {isSettingsModalOpen && (
-        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
-          <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl h-[80vh] flex overflow-hidden border border-slate-200">
+        <>
+          <div className="fixed inset-0 z-[100] bg-slate-50 flex overflow-hidden animate-in fade-in zoom-in-95 duration-200">
             {/* Sidebar */}
-            <div className="w-64 bg-slate-50 border-r border-slate-200 p-4 flex flex-col gap-2">
-              <h2 className="text-lg font-bold text-slate-800 mb-4 px-3">Settings</h2>
+            <div className="w-72 bg-white border-r border-slate-200 flex flex-col shadow-sm relative z-10">
+              <div className="h-16 flex items-center px-6 border-b border-slate-200">
+                <h2 className="text-xl font-bold text-slate-900 tracking-tight">Configuration</h2>
+              </div>
+              
+              <div className="flex-1 overflow-y-auto p-4 space-y-8">
+                <div>
+                  <div className="px-3 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Account</div>
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => setActiveSettingsTab('profile')}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeSettingsTab === 'profile' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+                    >
+                      Personal Profile
+                    </button>
+                  </div>
+                </div>
 
-              <button
-                onClick={() => setActiveSettingsTab('profile')}
-                className={`text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeSettingsTab === 'profile' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
-              >
-                Personal Profile
-              </button>
+                <div>
+                  <div className="px-3 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">Workspace</div>
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => setActiveSettingsTab('global')}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeSettingsTab === 'global' ? 'bg-blue-50 text-blue-700' : 'text-slate-100 hover:bg-slate-100 hover:text-slate-900'}`}
+                    >
+                      Global Variables
+                    </button>
+                    {canManageUsers && (
+                      <button
+                        onClick={() => setActiveSettingsTab('users')}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeSettingsTab === 'users' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+                      >
+                        Team Management
+                      </button>
+                    )}
+                    {canManageHotelDetails && (
+                      <button
+                        onClick={() => setActiveSettingsTab('hotel')}
+                        className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeSettingsTab === 'hotel' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+                      >
+                        Workspace Profile
+                      </button>
+                    )}
+                  </div>
+                </div>
 
-              <button
-                onClick={() => setActiveSettingsTab('global')}
-                className={`text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeSettingsTab === 'global' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
-              >
-                Global Variables
-              </button>
-
-              {canManageUsers && (
-                <button
-                  onClick={() => setActiveSettingsTab('users')}
-                  className={`text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeSettingsTab === 'users' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
-                >
-                  User Management
-                </button>
-              )}
-
-              {canManageHotelDetails && (
-                <button
-                  onClick={() => setActiveSettingsTab('hotel')}
-                  className={`text-left px-3 py-2 rounded-md text-sm font-medium transition-colors ${activeSettingsTab === 'hotel' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
-                >
-                  Hotel Details
-                </button>
-              )}
+                <div>
+                  <div className="px-3 mb-2 text-xs font-semibold text-slate-400 uppercase tracking-wider">CRM Settings</div>
+                  <div className="space-y-1">
+                    <button
+                      onClick={() => setActiveSettingsTab('pipelines')}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeSettingsTab === 'pipelines' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+                    >
+                      Pipelines & Stages
+                    </button>
+                    <button
+                      onClick={() => setActiveSettingsTab('integrations')}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeSettingsTab === 'integrations' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+                    >
+                      Integrations
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
 
             {/* Content Area */}
-            <div className="flex-1 flex flex-col min-w-0 bg-white">
-              <div className="h-14 border-b border-slate-200 px-6 flex items-center justify-between shrink-0">
-                <h3 className="font-semibold text-slate-800 capitalize">{activeSettingsTab.replace('_', ' ')}</h3>
-                <button
-                  onClick={() => setIsSettingsModalOpen(false)}
-                  className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
-                >
-                  ✕
+            <div className="flex-1 flex flex-col h-full overflow-hidden bg-slate-50/50">
+              {/* Topbar */}
+              <div className="h-16 border-b border-slate-200 bg-white flex items-center justify-between px-8">
+                <h3 className="font-semibold text-slate-800">
+                  {activeSettingsTab === 'profile' && 'Personal Profile'}
+                  {activeSettingsTab === 'global' && 'Global Variables'}
+                  {activeSettingsTab === 'users' && 'Team Management'}
+                  {activeSettingsTab === 'hotel' && 'Workspace Profile'}
+                  {activeSettingsTab === 'pipelines' && 'Pipelines & Stages'}
+                  {activeSettingsTab === 'integrations' && 'Integrations'}
+                </h3>
+                <button onClick={() => setIsSettingsModalOpen(false)} className="h-8 w-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 hover:text-slate-900 transition-colors">
+                  &times;
                 </button>
               </div>
-              <div className="flex-1 overflow-y-auto p-6">
+
+              <div className="flex-1 overflow-y-auto p-8 lg:p-12">
                 {activeSettingsTab === 'profile' && (
                   <div className="max-w-2xl space-y-6">
                     <h4 className="text-lg font-medium text-slate-900">Personal Profile</h4>
@@ -4273,7 +4309,7 @@ export default function App() {
               </div>
             </div>
           )}
-        </div>
+        </>
       )}
 
       {/* MODAL 2: Create Lead Modal */}
