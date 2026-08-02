@@ -4229,10 +4229,10 @@ export default function App() {
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
                     <select className="w-full border border-slate-300 rounded-md p-2 text-sm" value={newUserRole} onChange={e => setNewUserRole(e.target.value)}>
-                      <option>Sales Agent</option>
+                      <option>General Manager</option>
                       <option>Sales Manager</option>
                       <option>Director of Sales</option>
-                      <option>General Manager</option>
+                      <option>Sales Coordinator</option>
                       <option>Front Desk Supervisor</option>
                     </select>
                   </div>
@@ -4258,10 +4258,10 @@ export default function App() {
                   <div>
                     <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
                     <select className="w-full border border-slate-300 rounded-md p-2 text-sm" value={editUserRole} onChange={e => setEditUserRole(e.target.value)}>
-                      <option>Sales Agent</option>
+                      <option>General Manager</option>
                       <option>Sales Manager</option>
                       <option>Director of Sales</option>
-                      <option>General Manager</option>
+                      <option>Sales Coordinator</option>
                       <option>Front Desk Supervisor</option>
                     </select>
                   </div>
