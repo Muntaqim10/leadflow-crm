@@ -279,6 +279,61 @@ const getDefaultEndDate = () => {
   return new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
 };
 
+const formatDisplayDate = (dateStr: string) => {
+  if (!dateStr) return '';
+  const date = new Date(dateStr + 'T00:00:00');
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+const getPresetDates = (preset: 'today' | 'tomorrow' | 'this_week' | 'this_month' | 'next_month' | 'all_time' | 'custom') => {
+  const today = new Date();
+  
+  switch (preset) {
+    case 'today': {
+      const dStr = today.toISOString().split('T')[0];
+      return { start: dStr, end: dStr };
+    }
+    case 'tomorrow': {
+      const tomorrow = new Date(today);
+      tomorrow.setDate(today.getDate() + 1);
+      const dStr = tomorrow.toISOString().split('T')[0];
+      return { start: dStr, end: dStr };
+    }
+    case 'this_week': {
+      const day = today.getDay();
+      const diff = today.getDate() - day;
+      const start = new Date(today.setDate(diff));
+      const end = new Date(start);
+      end.setDate(start.getDate() + 6);
+      return {
+        start: start.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0]
+      };
+    }
+    case 'this_month': {
+      const start = new Date(today.getFullYear(), today.getMonth(), 1);
+      const end = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+      return {
+        start: start.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0]
+      };
+    }
+    case 'next_month': {
+      const start = new Date(today.getFullYear(), today.getMonth() + 1, 1);
+      const end = new Date(today.getFullYear(), today.getMonth() + 2, 0);
+      return {
+        start: start.toISOString().split('T')[0],
+        end: end.toISOString().split('T')[0]
+      };
+    }
+    case 'all_time': {
+      return { start: '', end: '' };
+    }
+    default:
+      return null;
+  }
+};
+
 export default function App() {
   const [activeTab, setActiveTab] = useState<'dashboard' | 'kanban' | 'analytics' | 'heatmap' | 'templates'>('dashboard');
   const [viewMode, setViewMode] = useState<'board' | 'list'>('board');
@@ -513,6 +568,18 @@ export default function App() {
   const [endDate, setEndDate] = useState(getDefaultEndDate());
   const [dateFilterType, setDateFilterType] = useState<'created_at' | 'check_in'>('created_at');
   const [formLostReason, setFormLostReason] = useState('');
+  
+  const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
+  const [datePreset, setDatePreset] = useState<'today' | 'tomorrow' | 'this_week' | 'this_month' | 'next_month' | 'all_time' | 'custom'>('this_month');
+
+  const handlePresetChange = (preset: 'today' | 'tomorrow' | 'this_week' | 'this_month' | 'next_month' | 'all_time' | 'custom') => {
+    setDatePreset(preset);
+    const range = getPresetDates(preset);
+    if (range) {
+      setStartDate(range.start);
+      setEndDate(range.end);
+    }
+  };
 
   // Follow-up sub-form
   const [newFollowUpDate, setNewFollowUpDate] = useState('');
@@ -1990,39 +2057,109 @@ export default function App() {
 
           {/* Centralized Global Date Filter Controls */}
           {(activeTab === 'dashboard' || activeTab === 'kanban' || activeTab === 'analytics' || activeTab === 'heatmap') && (
-            <div className="hidden md:flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 shadow-sm">
-              <select
-                value={dateFilterType}
-                onChange={(e) => setDateFilterType(e.target.value as any)}
-                className="bg-transparent font-bold text-[10px] uppercase text-slate-500 px-2 outline-none border-r border-slate-200 cursor-pointer"
+            <div className="relative">
+              <button
+                onClick={() => setIsDatePopoverOpen(!isDatePopoverOpen)}
+                className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-slate-50 transition-colors shadow-sm cursor-pointer"
               >
-                <option value="created_at">Created Date</option>
-                <option value="check_in">Stay Dates</option>
-              </select>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="bg-transparent px-2 py-0.5 outline-none text-slate-800 focus:text-blue-600 font-medium"
-              />
-              <span className="text-slate-400 font-medium">to</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="bg-transparent px-2 py-0.5 outline-none text-slate-800 focus:text-blue-600 font-medium"
-              />
-              {(startDate !== getDefaultStartDate() || endDate !== getDefaultEndDate()) && (
-                <button
-                  onClick={() => {
-                    setStartDate(getDefaultStartDate());
-                    setEndDate(getDefaultEndDate());
-                  }}
-                  className="text-slate-400 hover:text-slate-600 font-bold px-2 cursor-pointer text-sm"
-                  title="Clear date filter"
-                >
-                  &times;
-                </button>
+                <CalendarDays className="h-4 w-4 text-slate-400" />
+                <span className="capitalize">{dateFilterType === 'created_at' ? 'Created Date' : 'Stay Dates'}:</span>
+                <span className="font-semibold text-slate-900">
+                  {(!startDate && !endDate)
+                    ? 'All Time'
+                    : `${formatDisplayDate(startDate)} to ${formatDisplayDate(endDate)}`}
+                </span>
+                <span className="text-slate-400 text-[10px]">▼</span>
+              </button>
+
+              {isDatePopoverOpen && (
+                <>
+                  {/* Backdrop to close when clicking outside */}
+                  <div className="fixed inset-0 z-30" onClick={() => setIsDatePopoverOpen(false)}></div>
+                  <div className="absolute right-0 mt-2 w-80 bg-white border border-slate-200 rounded-xl shadow-xl p-4 z-40 animate-in fade-in slide-in-from-top-2 duration-150">
+                    <div className="space-y-4">
+                      {/* Filter Type Toggle */}
+                      <div>
+                        <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">Filter Type</span>
+                        <div className="grid grid-cols-2 gap-1 bg-slate-100 p-1 rounded-lg">
+                          <button
+                            onClick={() => setDateFilterType('created_at')}
+                            className={`py-1.5 text-xs font-semibold rounded-md transition-colors ${dateFilterType === 'created_at' ? 'bg-white text-slate-800 shadow' : 'text-slate-500 hover:text-slate-700'}`}
+                          >
+                            Created Date
+                          </button>
+                          <button
+                            onClick={() => setDateFilterType('check_in')}
+                            className={`py-1.5 text-xs font-semibold rounded-md transition-colors ${dateFilterType === 'check_in' ? 'bg-white text-slate-800 shadow' : 'text-slate-500 hover:text-slate-700'}`}
+                          >
+                            Stay Dates
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* Presets List */}
+                      <div>
+                        <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">Presets</span>
+                        <div className="grid grid-cols-2 gap-1 text-left">
+                          {[
+                            { key: 'today', label: 'Today' },
+                            { key: 'tomorrow', label: 'Tomorrow' },
+                            { key: 'this_week', label: 'This Week' },
+                            { key: 'this_month', label: 'This Month' },
+                            { key: 'next_month', label: 'Next Month' },
+                            { key: 'all_time', label: 'All Time' }
+                          ].map(item => (
+                            <button
+                              key={item.key}
+                              onClick={() => handlePresetChange(item.key as any)}
+                              className={`px-3 py-1.5 text-left text-xs font-medium rounded-lg hover:bg-slate-50 transition-colors ${datePreset === item.key ? 'bg-blue-50 text-blue-700 font-semibold' : 'text-slate-600'}`}
+                            >
+                              {item.label}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Custom Range Inputs */}
+                      <div className="border-t border-slate-100 pt-3">
+                        <span className="block text-[10px] uppercase font-bold text-slate-400 tracking-wider mb-2">Custom Range</span>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <label className="block text-[9px] text-slate-400 font-semibold mb-1">Start Date</label>
+                            <input
+                              type="date"
+                              value={startDate}
+                              onChange={(e) => {
+                                setStartDate(e.target.value);
+                                setDatePreset('custom');
+                              }}
+                              className="w-full border border-slate-200 rounded-lg p-2 text-xs text-slate-700 outline-none focus:border-blue-500"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-[9px] text-slate-400 font-semibold mb-1">End Date</label>
+                            <input
+                              type="date"
+                              value={endDate}
+                              onChange={(e) => {
+                                setEndDate(e.target.value);
+                                setDatePreset('custom');
+                              }}
+                              className="w-full border border-slate-200 rounded-lg p-2 text-xs text-slate-700 outline-none focus:border-blue-500"
+                            />
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <button
+                        onClick={() => setIsDatePopoverOpen(false)}
+                        className="w-full mt-2 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-colors"
+                      >
+                        Apply Filter
+                      </button>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           )}
