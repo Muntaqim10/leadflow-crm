@@ -188,6 +188,54 @@ const parseRoomDetails = (raw: string | undefined | null) => {
   return { eventRoom: '', eventRoomRate: '500', guestRooms: [], accessories: [], eventDetails: raw };
 };
 
+const getLeadBookingType = (rawDetails: string | undefined | null) => {
+  const parsed = parseRoomDetails(rawDetails) || { eventRoom: '', eventDetails: '', guestRooms: [] };
+  const hasEvent = Boolean(parsed.eventRoom || (parsed.eventDetails && parsed.eventDetails.trim()));
+  const hasRooms = Boolean(
+    parsed.guestRooms && 
+    parsed.guestRooms.length > 0 && 
+    parsed.guestRooms.some((r: any) => (r.type && r.type.trim()) || (r.count && String(r.count).trim() !== '' && String(r.count).trim() !== '0'))
+  );
+
+  if (hasEvent && hasRooms) {
+    return {
+      type: 'both',
+      label: 'Event & Stay Block',
+      shortLabel: 'Event & Stay Block',
+      icon: '✨',
+      badgeClass: 'bg-purple-100 text-purple-800 border-purple-200',
+      pillClass: 'bg-purple-600 text-white',
+    };
+  } else if (hasEvent) {
+    return {
+      type: 'event',
+      label: 'Event Only',
+      shortLabel: 'Event Only',
+      icon: '🏢',
+      badgeClass: 'bg-amber-100 text-amber-800 border-amber-200',
+      pillClass: 'bg-amber-600 text-white',
+    };
+  } else if (hasRooms) {
+    return {
+      type: 'stay_block',
+      label: 'Stay Block Only',
+      shortLabel: 'Stay Block Only',
+      icon: '🛏️',
+      badgeClass: 'bg-blue-100 text-blue-800 border-blue-200',
+      pillClass: 'bg-blue-600 text-white',
+    };
+  } else {
+    return {
+      type: 'general',
+      label: 'General Inquiry',
+      shortLabel: 'General',
+      icon: '📋',
+      badgeClass: 'bg-slate-100 text-slate-700 border-slate-200',
+      pillClass: 'bg-slate-600 text-white',
+    };
+  }
+};
+
 const formatRoomDetailsDisplay = (raw: string | undefined | null) => {
   if (!raw) return 'Not assigned';
   const parsed = parseRoomDetails(raw);
@@ -387,6 +435,9 @@ export default function App() {
   const [isNewLeadModalOpen, setIsNewLeadModalOpen] = useState(false);
   const [isAiModalOpen, setIsAiModalOpen] = useState(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
+  const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
+  const [selectedDayLeads, setSelectedDayLeads] = useState<any[]>([]);
+  const [isDayLeadsModalOpen, setIsDayLeadsModalOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'global' | 'users' | 'hotel'>('profile');
 
   // Authorization Helpers
@@ -3208,19 +3259,110 @@ export default function App() {
                                   <div
                                     key={idx}
                                     id={isFirstOfCurrentMonth ? 'heatmap-current-month' : undefined}
-                                    className={`p-3 rounded-lg border text-sm min-h-[85px] flex flex-col justify-between transition-all shadow-sm ${shadeClass}`}
+                                    onClick={() => {
+                                      if (dayData && dayData.leads && dayData.leads.length > 0) {
+                                        if (dayData.leads.length === 1) {
+                                          const fullLead = leads.find((l) => l.id === dayData.leads[0].id);
+                                          if (fullLead) {
+                                            setSelectedLead(fullLead);
+                                          } else {
+                                            setSelectedDayLeads(dayData.leads);
+                                            setSelectedCalendarDate(dateStr);
+                                            setIsDayLeadsModalOpen(true);
+                                          }
+                                        } else {
+                                          setSelectedDayLeads(dayData.leads);
+                                          setSelectedCalendarDate(dateStr);
+                                          setIsDayLeadsModalOpen(true);
+                                        }
+                                      } else {
+                                        resetLeadForm();
+                                        setFormCheckIn(dateStr);
+                                        setIsNewLeadModalOpen(true);
+                                      }
+                                    }}
+                                    className={`group relative p-3 rounded-lg border text-sm min-h-[95px] flex flex-col justify-between transition-all shadow-sm cursor-pointer hover:border-blue-400 hover:shadow-md ${shadeClass}`}
                                   >
                                     <div className="flex justify-between items-center opacity-75">
                                       <span className="font-bold text-[11px]">{dayLabel}</span>
                                       <span className="text-[9px] font-medium tracking-wide uppercase">{weekdayLabel}</span>
                                     </div>
+
                                     {count > 0 ? (
-                                      <div className="text-left mt-2">
-                                        <span className="text-[10px] font-bold block">{count} Leads</span>
-                                        <span className="text-[9px] font-semibold text-emerald-600">${Math.round(revenue).toLocaleString()}</span>
+                                      <div className="text-left mt-2 space-y-1">
+                                        <div className="flex items-center justify-between">
+                                          <span className="text-[10px] font-bold block text-slate-800">{count} Lead{count > 1 ? 's' : ''}</span>
+                                          <span className="text-[9px] font-semibold text-emerald-600">${Math.round(revenue).toLocaleString()}</span>
+                                        </div>
+
+                                        {/* Booking Type Badges on Card */}
+                                        <div className="flex flex-wrap gap-1 mt-1">
+                                          {(() => {
+                                            const dayLeadsList = dayData?.leads || [];
+                                            const types = dayLeadsList.map((l: any) => getLeadBookingType(l.rooms_or_event_details));
+                                            const hasBoth = types.some((t: any) => t.type === 'both');
+                                            const hasEvent = types.some((t: any) => t.type === 'event' || t.type === 'both');
+                                            const hasStay = types.some((t: any) => t.type === 'stay_block' || t.type === 'both');
+
+                                            return (
+                                              <>
+                                                {hasBoth ? (
+                                                  <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200">
+                                                    ✨ Both
+                                                  </span>
+                                                ) : (
+                                                  <>
+                                                    {hasEvent && (
+                                                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                                                        🏢 Event
+                                                      </span>
+                                                    )}
+                                                    {hasStay && (
+                                                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200">
+                                                        🛏️ Stay Block
+                                                      </span>
+                                                    )}
+                                                  </>
+                                                )}
+                                              </>
+                                            );
+                                          })()}
+                                        </div>
                                       </div>
                                     ) : (
-                                      <span className="text-[9px] text-slate-400 self-start mt-2">No leads</span>
+                                      <span className="text-[9px] text-slate-400 self-start mt-2 hover:text-blue-600 transition-colors">+ Add lead</span>
+                                    )}
+
+                                    {/* Hover Popover Tooltip */}
+                                    {count > 0 && (
+                                      <div className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 bg-slate-900 text-white rounded-xl p-3 shadow-2xl z-50 pointer-events-none text-xs border border-slate-700 animate-in fade-in zoom-in-95 duration-150">
+                                        <div className="font-bold border-b border-slate-700 pb-1.5 mb-2 flex justify-between items-center text-slate-200">
+                                          <span>{dayLabel} Leads</span>
+                                          <span className="text-emerald-400 text-[11px]">${Math.round(revenue).toLocaleString()}</span>
+                                        </div>
+                                        <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                                          {(dayData?.leads || []).map((lead: any, lIdx: number) => {
+                                            const bType = getLeadBookingType(lead.rooms_or_event_details);
+                                            return (
+                                              <div key={lIdx} className="bg-slate-800/90 p-2 rounded-lg text-[10px] space-y-1 border border-slate-700">
+                                                <div className="flex justify-between items-center">
+                                                  <span className="font-bold text-white truncate max-w-[120px]">{lead.name_company}</span>
+                                                  <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${bType.badgeClass}`}>
+                                                    {bType.icon} {bType.shortLabel}
+                                                  </span>
+                                                </div>
+                                                <div className="flex justify-between text-slate-400">
+                                                  <span className="capitalize">{lead.status.replace('_', ' ')}</span>
+                                                  <span className="font-semibold text-emerald-400">${parseFloat(lead.revenue || '0').toLocaleString()}</span>
+                                                </div>
+                                              </div>
+                                            );
+                                          })}
+                                        </div>
+                                        <div className="text-[9px] text-sky-400 font-medium text-center mt-2 border-t border-slate-800 pt-1">
+                                          Click to view lead details
+                                        </div>
+                                      </div>
                                     )}
                                   </div>
                                 );
@@ -3786,9 +3928,19 @@ export default function App() {
                       <h4 className="text-lg font-bold text-slate-900">{selectedLead.name_company}</h4>
                       <p className="text-slate-500 mt-1">{selectedLead.email} | {selectedLead.phone || 'No phone'}</p>
                     </div>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600/10 text-sky-400 border border-blue-500/20 capitalize">
-                      {selectedLead.status.replace(/_/g, ' ')}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {(() => {
+                        const bookingType = getLeadBookingType(selectedLead.rooms_or_event_details);
+                        return (
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${bookingType.badgeClass}`}>
+                            {bookingType.icon} {bookingType.label}
+                          </span>
+                        );
+                      })()}
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-blue-600/10 text-sky-400 border border-blue-500/20 capitalize">
+                        {selectedLead.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
                   </div>
 
                   {/* Tab Switcher */}
@@ -5032,6 +5184,64 @@ export default function App() {
                 </div>
               </div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 5: Day Leads Summary Modal */}
+      {isDayLeadsModalOpen && selectedCalendarDate && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 rounded-xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[80vh]">
+            <div className="px-6 py-4 border-b border-slate-200 bg-slate-50 flex justify-between items-center">
+              <div>
+                <h3 className="font-bold text-slate-800 text-base flex items-center gap-2">
+                  <span>📅</span>
+                  <span>Leads for {formatDisplayDate(selectedCalendarDate)}</span>
+                </h3>
+                <p className="text-xs text-slate-500">{selectedDayLeads.length} lead(s) requested for this date</p>
+              </div>
+              <button
+                onClick={() => setIsDayLeadsModalOpen(false)}
+                className="text-slate-500 hover:text-slate-700 text-lg font-bold"
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="p-6 overflow-y-auto space-y-3 flex-1 text-xs">
+              {selectedDayLeads.map((dayLead) => {
+                const bookingType = getLeadBookingType(dayLead.rooms_or_event_details);
+                return (
+                  <div
+                    key={dayLead.id}
+                    onClick={() => {
+                      setIsDayLeadsModalOpen(false);
+                      const fullLead = leads.find((l) => l.id === dayLead.id);
+                      if (fullLead) {
+                        setSelectedLead(fullLead);
+                      }
+                    }}
+                    className="p-4 rounded-xl border border-slate-200 hover:border-blue-400 hover:bg-blue-50/30 transition-all cursor-pointer shadow-xs space-y-2 group"
+                  >
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900 text-sm group-hover:text-blue-600 transition-colors">{dayLead.name_company}</span>
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full border ${bookingType.badgeClass}`}>
+                        {bookingType.icon} {bookingType.label}
+                      </span>
+                    </div>
+
+                    <div className="flex items-center justify-between text-xs text-slate-500 pt-1 border-t border-slate-100">
+                      <div>
+                        Status: <span className="font-semibold text-slate-700 capitalize">{dayLead.status.replace('_', ' ')}</span>
+                      </div>
+                      <div className="font-bold text-emerald-600">
+                        ${parseFloat(dayLead.revenue || '0').toLocaleString()}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           </div>
         </div>
       )}

@@ -45,6 +45,14 @@ export async function GET(request: Request) {
             name_company: lead.name_company,
             status: lead.status,
             revenue: lead.revenue_potential,
+            rooms_or_event_details: lead.rooms_or_event_details,
+            check_in_date: lead.check_in_date,
+            check_out_date: lead.check_out_date,
+            market_segment: lead.market_segment,
+            lead_source: lead.lead_source,
+            assigned_sales_manager_id: lead.assigned_sales_manager_id,
+            email: lead.email,
+            phone: lead.phone,
           });
         }
         // Move to next day
