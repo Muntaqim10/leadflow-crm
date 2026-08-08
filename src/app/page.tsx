@@ -4091,20 +4091,7 @@ export default function App() {
                         </div>
                       </div>
 
-                      {/* AI Proposal Generator */}
-                      <div className="space-y-3 pt-2">
-                        <span className="text-slate-600 font-bold block">📄 AI Group Rooms Contract & Proposal</span>
-                        <button
-                          onClick={() => {
-                            setIsProposalModalOpen(true);
-                            handleGenerateProposalContract();
-                          }}
-                          className="w-full flex items-center justify-center gap-2 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold py-2.5 rounded-lg transition-all active:scale-95 shadow-sm"
-                        >
-                          <span>📄</span>
-                          <span>Generate Rooms Agreement & Proposal</span>
-                        </button>
-                      </div>
+
                     </div>
                   ) : (
                     /* Timeline and Notes Tab Content */
