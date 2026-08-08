@@ -28,7 +28,8 @@ import {
   Hotel,
   LogOut,
   Eye,
-  EyeOff
+  EyeOff,
+  Copy
 } from 'lucide-react';
 import { supabase } from '@/lib/supabaseClient';
 
@@ -1542,25 +1543,21 @@ export default function App() {
     }
   };
 
-  const handleSendEmail = async () => {
+  const handleCopyEmail = async () => {
     if (!aiDraftLogId) return;
     setIsSendingEmail(true);
     setErrorMsg('');
     setSuccessMsg('');
 
     try {
-      // 1. Trigger local email client (Outlook/Live)
-      let subject = "Holiday Springfield Follow-Up";
-      let body = aiDraft;
+      // 1. Copy text to clipboard
+      await navigator.clipboard.writeText(aiDraft);
 
+      let subject = "Holiday Springfield Follow-Up";
       if (aiDraft.startsWith("Subject:")) {
         const parts = aiDraft.split('\n');
         subject = parts[0].replace('Subject:', '').trim();
-        body = parts.slice(1).join('\n').trim();
       }
-
-      const mailtoLink = `mailto:${selectedLead?.email || ''}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
-      window.location.href = mailtoLink;
 
       // 2. Log to CRM database
       const res = await fetch('/api/email/send', {
@@ -1581,7 +1578,7 @@ export default function App() {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-              description: `Sent AI generated email: "${subject}" (${emailWasEdited ? 'Edited by human' : 'Sent unmodified'})`,
+              description: `Copied AI generated email: "${subject}" (${emailWasEdited ? 'Edited by human' : 'Copied unmodified'})`,
               activity_type: 'email_generated'
             })
           });
@@ -1590,12 +1587,12 @@ export default function App() {
         }
       }
 
-      setSuccessMsg('Outlook opened and email logged to CRM successfully!');
+      setSuccessMsg('Email draft copied to clipboard and logged to CRM!');
       setIsAiModalOpen(false);
       setSelectedLead(null);
       fetchData();
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to dispatch email.');
+      setErrorMsg(err.message || 'Failed to copy email to clipboard.');
     } finally {
       setIsSendingEmail(false);
     }
@@ -4920,11 +4917,12 @@ export default function App() {
                   Cancel
                 </button>
                 <button
-                  onClick={handleSendEmail}
+                  onClick={handleCopyEmail}
                   disabled={isGeneratingAi || isSendingEmail || !aiDraft}
-                  className="flex-1 bg-gradient-to-r from-blue-600 to-sky-600 text-white font-semibold py-2.5 rounded-lg hover:from-blue-500 hover:to-sky-500 transition-all disabled:opacity-50"
+                  className="flex-1 bg-gradient-to-r from-blue-600 to-sky-600 text-white font-semibold py-2.5 rounded-lg hover:from-blue-500 hover:to-sky-500 transition-all disabled:opacity-50 flex items-center justify-center gap-2"
                 >
-                  {isSendingEmail ? 'Sending...' : 'Approve & Send'}
+                  <Copy className="h-4 w-4" />
+                  <span>{isSendingEmail ? 'Copying...' : 'Copy to Clipboard'}</span>
                 </button>
               </div>
             </div>
