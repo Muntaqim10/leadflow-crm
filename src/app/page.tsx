@@ -444,6 +444,7 @@ export default function App() {
   const currentUserEmail = session?.user?.email || '';
   const isMuntaqim = currentUserEmail === 'muntaqim@leadflow.com';
   const isArzaan = currentUserEmail === 'arzaan@leadflow.com';
+  const canDeleteLeads = currentUserEmail !== 'rokeya@leadflow.com' && currentUserEmail !== 'riham@leadflow.com';
   const canManageUsers = isMuntaqim || isArzaan;
   const canManageHotelDetails = isMuntaqim;
 
@@ -1065,6 +1066,10 @@ export default function App() {
   };
 
   const handleDeleteLead = async (id: string) => {
+    if (!canDeleteLeads) {
+      setErrorMsg('You do not have permission to delete leads.');
+      return;
+    }
     if (!confirm('Are you sure you want to delete this lead?')) return;
     setErrorMsg('');
     try {
@@ -4220,13 +4225,15 @@ export default function App() {
                       <Edit3 className="h-4 w-4" />
                       <span>Edit Record</span>
                     </button>
-                    <button
-                      onClick={() => handleDeleteLead(selectedLead.id)}
-                      className="flex-1 flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 py-2.5 rounded-lg border border-rose-200"
-                    >
-                      <Trash2 className="h-4 w-4" />
-                      <span>Delete Lead</span>
-                    </button>
+                    {canDeleteLeads && (
+                      <button
+                        onClick={() => handleDeleteLead(selectedLead.id)}
+                        className="flex-1 flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 py-2.5 rounded-lg border border-rose-200"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        <span>Delete Lead</span>
+                      </button>
+                    )}
                   </div>
                 </div>
               )}
