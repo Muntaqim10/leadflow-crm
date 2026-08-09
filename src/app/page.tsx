@@ -3221,22 +3221,12 @@ export default function App() {
                     {(() => {
                       const getCalendarDays = () => {
                         const start = new Date();
-                        const end = new Date();
+                        start.setMonth(0); // Jan 1st of current year
+                        start.setDate(1);
                         
-                        if (calendarViewMode === 'demand') {
-                          start.setMonth(0); // Jan 1st of current year
-                          start.setDate(1);
-                          
-                          end.setMonth(11); // Dec 31st of current year
-                          end.setDate(31);
-                        } else {
-                          // Appointments: Current month to 12 months in future
-                          start.setDate(1);
-                          
-                          end.setFullYear(start.getFullYear() + 1);
-                          end.setMonth(start.getMonth());
-                          end.setDate(0); // Last day of previous month next year
-                        }
+                        const end = new Date();
+                        end.setMonth(11); // Dec 31st of current year
+                        end.setDate(31);
 
                         const dates: Date[] = [];
                         const curr = new Date(start);
@@ -3282,28 +3272,30 @@ export default function App() {
                                     key={idx}
                                     id={isFirstOfCurrentMonth ? 'heatmap-current-month' : undefined}
                                     onClick={() => {
-                                      if (dayData && dayData.leads && dayData.leads.length > 0) {
-                                        if (dayData.leads.length === 1) {
-                                          const fullLead = leads.find((l) => l.id === dayData.leads[0].id);
-                                          if (fullLead) {
-                                            setSelectedLead(fullLead);
+                                      if (dateStr >= todayStr) {
+                                        if (dayData && dayData.leads && dayData.leads.length > 0) {
+                                          if (dayData.leads.length === 1) {
+                                            const fullLead = leads.find((l) => l.id === dayData.leads[0].id);
+                                            if (fullLead) {
+                                              setSelectedLead(fullLead);
+                                            } else {
+                                              setSelectedDayLeads(dayData.leads);
+                                              setSelectedCalendarDate(dateStr);
+                                              setIsDayLeadsModalOpen(true);
+                                            }
                                           } else {
                                             setSelectedDayLeads(dayData.leads);
                                             setSelectedCalendarDate(dateStr);
                                             setIsDayLeadsModalOpen(true);
                                           }
                                         } else {
-                                          setSelectedDayLeads(dayData.leads);
-                                          setSelectedCalendarDate(dateStr);
-                                          setIsDayLeadsModalOpen(true);
+                                          resetLeadForm();
+                                          setFormCheckIn(dateStr);
+                                          setIsNewLeadModalOpen(true);
                                         }
-                                      } else {
-                                        resetLeadForm();
-                                        setFormCheckIn(dateStr);
-                                        setIsNewLeadModalOpen(true);
                                       }
                                     }}
-                                    className={`group relative p-3 rounded-lg border text-sm min-h-[95px] flex flex-col justify-between transition-all shadow-sm cursor-pointer hover:border-blue-400 hover:shadow-md ${shadeClass}`}
+                                    className={`group relative p-3 rounded-lg border text-sm min-h-[95px] flex flex-col justify-between transition-all shadow-sm ${dateStr >= todayStr ? 'cursor-pointer hover:border-blue-400 hover:shadow-md' : 'cursor-not-allowed opacity-75'} ${shadeClass}`}
                                   >
                                     <div className="flex justify-between items-center opacity-75">
                                       <span className="font-bold text-[11px]">{dayLabel}</span>
