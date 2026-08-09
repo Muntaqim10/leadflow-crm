@@ -507,6 +507,8 @@ export default function App() {
   const [newTaskAssignee, setNewTaskAssignee] = useState('');
   const [newTaskDueDate, setNewTaskDueDate] = useState('');
   const [newTaskLeadId, setNewTaskLeadId] = useState('');
+  const [taskLeadSearchTerm, setTaskLeadSearchTerm] = useState('');
+  const [isTaskLeadSearchOpen, setIsTaskLeadSearchOpen] = useState(false);
   const [newNoteText, setNewNoteText] = useState('');
   const [activitySaving, setActivitySaving] = useState(false);
 
@@ -1704,6 +1706,10 @@ export default function App() {
     return filteredLeads.filter(l => l.status !== 'confirmed' && l.status !== 'lost');
   }, [filteredLeads]);
 
+  const allActiveLeadsForSearch = useMemo(() => {
+    return leads.filter(l => l.status !== 'confirmed' && l.status !== 'lost');
+  }, [leads]);
+
   const loggedInUserId = useMemo(() => {
     if (!session?.user?.email) return null;
     const email = session.user.email;
@@ -2269,16 +2275,47 @@ export default function App() {
                               <option key={u.id} value={u.id}>{u.name}</option>
                             ))}
                           </select>
-                          <select
-                            value={newTaskLeadId}
-                            onChange={(e) => setNewTaskLeadId(e.target.value)}
-                            className="flex-1 min-w-[130px] bg-white border border-slate-300 rounded-md p-2 outline-none focus:border-blue-500 text-xs text-slate-700"
-                          >
-                            <option value="">Link Lead</option>
-                            {activeLeads.map(l => (
-                              <option key={l.id} value={l.id}>{l.name_company}</option>
-                            ))}
-                          </select>
+                          <div className="relative flex-1 min-w-[130px]">
+                            <input
+                              type="text"
+                              value={isTaskLeadSearchOpen ? taskLeadSearchTerm : (newTaskLeadId ? allActiveLeadsForSearch.find(l => l.id === newTaskLeadId)?.name_company || '' : '')}
+                              onChange={(e) => {
+                                setTaskLeadSearchTerm(e.target.value);
+                                setNewTaskLeadId('');
+                                setIsTaskLeadSearchOpen(true);
+                              }}
+                              onFocus={() => {
+                                setTaskLeadSearchTerm('');
+                                setIsTaskLeadSearchOpen(true);
+                              }}
+                              onBlur={() => setTimeout(() => setIsTaskLeadSearchOpen(false), 200)}
+                              placeholder="Link Lead (Search...)"
+                              className="w-full bg-white border border-slate-300 rounded-md p-2 outline-none focus:border-blue-500 text-xs text-slate-700"
+                            />
+                            {isTaskLeadSearchOpen && (
+                              <div className="absolute z-10 w-[250px] mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-[200px] overflow-y-auto">
+                                {allActiveLeadsForSearch
+                                  .filter(l => !taskLeadSearchTerm || l.name_company.toLowerCase().includes(taskLeadSearchTerm.toLowerCase()))
+                                  .slice(0, 50)
+                                  .map(l => (
+                                    <div
+                                      key={l.id}
+                                      onClick={() => {
+                                        setNewTaskLeadId(l.id);
+                                        setTaskLeadSearchTerm('');
+                                        setIsTaskLeadSearchOpen(false);
+                                      }}
+                                      className="p-2 text-xs hover:bg-slate-50 cursor-pointer text-slate-700 truncate border-b border-slate-100 last:border-0"
+                                    >
+                                      {l.name_company}
+                                    </div>
+                                  ))}
+                                {allActiveLeadsForSearch.filter(l => !taskLeadSearchTerm || l.name_company.toLowerCase().includes(taskLeadSearchTerm.toLowerCase())).length === 0 && (
+                                  <div className="p-2 text-xs text-slate-400 italic">No leads found</div>
+                                )}
+                              </div>
+                            )}
+                          </div>
                           <input
                             type="datetime-local"
                             value={newTaskDueDate}
