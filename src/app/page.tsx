@@ -1139,7 +1139,7 @@ export default function App() {
 
       setSuccessMsg('Appointment scheduled successfully!');
       setIsQuickBookingOpen(false);
-      setQuickBookLeadId('');
+      setQuickBookClientName('');
       setQuickBookTime('10:00 AM');
       setQuickBookType('Site Tour');
       fetchData();
