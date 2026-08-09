@@ -672,15 +672,15 @@ export default function App() {
     }
   }, [activeTab]);
 
-  // Auto-scroll heatmap to current month
+  // Auto-scroll calendar to current month
   useEffect(() => {
-    if (activeTab === 'heatmap' && !startDate && !endDate && heatmap && !isLoading) {
+    if (activeTab === 'heatmap' && !startDate && !endDate && !isLoading) {
       setTimeout(() => {
         const el = document.getElementById('heatmap-current-month');
         if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
     }
-  }, [activeTab, startDate, endDate, heatmap, isLoading]);
+  }, [activeTab, calendarViewMode, startDate, endDate, heatmap, liveAppointments, isLoading]);
 
   // Fetch all initial data
   const fetchData = async () => {
