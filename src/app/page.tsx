@@ -2101,14 +2101,6 @@ export default function App() {
             </div>
           )}
 
-          {/* Calendar View Date Range Controls (Full Month View, Uncapped) */}
-          {activeTab === 'heatmap' && (
-            <div className="hidden md:flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 shadow-sm">
-              <span className="font-bold text-[10px] uppercase text-slate-500 px-2 border-r border-slate-200">
-                {calendarViewMode === 'demand' ? '🔥 Year-Round Stay Demand Forecast' : '📅 12-Month Appointments Schedule'}
-              </span>
-            </div>
-          )}
 
           <div className="flex items-center gap-4">
             <button
