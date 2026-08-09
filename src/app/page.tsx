@@ -3272,30 +3272,32 @@ export default function App() {
                                     key={idx}
                                     id={isFirstOfCurrentMonth ? 'heatmap-current-month' : undefined}
                                     onClick={() => {
-                                      if (dateStr >= todayStr) {
-                                        if (dayData && dayData.leads && dayData.leads.length > 0) {
-                                          if (dayData.leads.length === 1) {
-                                            const fullLead = leads.find((l) => l.id === dayData.leads[0].id);
-                                            if (fullLead) {
-                                              setSelectedLead(fullLead);
-                                            } else {
-                                              setSelectedDayLeads(dayData.leads);
-                                              setSelectedCalendarDate(dateStr);
-                                              setIsDayLeadsModalOpen(true);
-                                            }
+                                      if (dayData && dayData.leads && dayData.leads.length > 0) {
+                                        if (dayData.leads.length === 1) {
+                                          const fullLead = leads.find((l) => l.id === dayData.leads[0].id);
+                                          if (fullLead) {
+                                            setSelectedLead(fullLead);
                                           } else {
                                             setSelectedDayLeads(dayData.leads);
                                             setSelectedCalendarDate(dateStr);
                                             setIsDayLeadsModalOpen(true);
                                           }
                                         } else {
-                                          resetLeadForm();
-                                          setFormCheckIn(dateStr);
-                                          setIsNewLeadModalOpen(true);
+                                          setSelectedDayLeads(dayData.leads);
+                                          setSelectedCalendarDate(dateStr);
+                                          setIsDayLeadsModalOpen(true);
                                         }
+                                      } else if (dateStr >= todayStr) {
+                                        resetLeadForm();
+                                        setFormCheckIn(dateStr);
+                                        setIsNewLeadModalOpen(true);
                                       }
                                     }}
-                                    className={`group relative p-3 rounded-lg border text-sm min-h-[95px] flex flex-col justify-between transition-all shadow-sm ${dateStr >= todayStr ? 'cursor-pointer hover:border-blue-400 hover:shadow-md' : 'cursor-not-allowed opacity-75'} ${shadeClass}`}
+                                    className={`group relative p-3 rounded-lg border text-sm min-h-[95px] flex flex-col justify-between transition-all shadow-sm ${
+                                      (dayData && dayData.leads && dayData.leads.length > 0) || dateStr >= todayStr 
+                                        ? 'cursor-pointer hover:border-blue-400 hover:shadow-md' 
+                                        : 'cursor-not-allowed opacity-75'
+                                    } ${shadeClass}`}
                                   >
                                     <div className="flex justify-between items-center opacity-75">
                                       <span className="font-bold text-[11px]">{dayLabel}</span>
@@ -4210,13 +4212,15 @@ export default function App() {
 
                   {/* Action items */}
                   <div className="flex gap-4 pt-4 border-t border-slate-200">
-                    <button
-                      onClick={() => setIsEditing(true)}
-                      className="flex-1 flex items-center justify-center gap-2 bg-[#1A212E] text-white py-2.5 rounded-lg border border-[#303650] hover:bg-[#222B3F]"
-                    >
-                      <Edit3 className="h-4 w-4" />
-                      <span>Edit Record</span>
-                    </button>
+                    {selectedLead.check_in_date >= todayStr && (
+                      <button
+                        onClick={() => setIsEditing(true)}
+                        className="flex-1 flex items-center justify-center gap-2 bg-[#1A212E] text-white py-2.5 rounded-lg border border-[#303650] hover:bg-[#222B3F]"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                        <span>Edit Record</span>
+                      </button>
+                    )}
                     <button
                       onClick={() => handleDeleteLead(selectedLead.id)}
                       className="flex-1 flex items-center justify-center gap-2 bg-rose-50 hover:bg-rose-100 text-rose-600 py-2.5 rounded-lg border border-rose-200"
@@ -5179,20 +5183,24 @@ export default function App() {
                 </div>
 
                 <div className="flex gap-3 pt-6 border-t border-slate-200">
-                  <button
-                    type="button"
-                    onClick={() => setIsEditingAppointment(true)}
-                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg font-semibold border border-slate-200 transition-colors"
-                  >
-                    ✏️ Reschedule
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteAppointment(activeAppointment.id)}
-                    className="flex-1 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 py-2 rounded-lg font-semibold transition-colors"
-                  >
-                    🚫 Cancel Meeting
-                  </button>
+                  {activeAppointment.appointment_date >= todayStr && (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => setIsEditingAppointment(true)}
+                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg font-semibold border border-slate-200 transition-colors"
+                      >
+                        ✏️ Reschedule
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleDeleteAppointment(activeAppointment.id)}
+                        className="flex-1 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 py-2 rounded-lg font-semibold transition-colors"
+                      >
+                        🚫 Cancel Meeting
+                      </button>
+                    </>
+                  )}
                   <button
                     type="button"
                     onClick={() => setActiveAppointment(null)}
