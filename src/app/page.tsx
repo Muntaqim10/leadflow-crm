@@ -2105,7 +2105,7 @@ export default function App() {
           {activeTab === 'heatmap' && (
             <div className="hidden md:flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 shadow-sm">
               <span className="font-bold text-[10px] uppercase text-slate-500 px-2 border-r border-slate-200">
-                {calendarViewMode === 'demand' ? '🔥 4-Month Stay Demand Forecast' : '📅 4-Month Appointments Schedule'}
+                {calendarViewMode === 'demand' ? '🔥 Year-Round Stay Demand Forecast' : '📅 12-Month Appointments Schedule'}
               </span>
             </div>
           )}
@@ -3229,11 +3229,22 @@ export default function App() {
                     {(() => {
                       const getCalendarDays = () => {
                         const start = new Date();
-                        start.setDate(1); // Start of current month
+                        const end = new Date();
                         
-                        const end = new Date(start);
-                        end.setMonth(end.getMonth() + 4);
-                        end.setDate(0); // End of 4th month
+                        if (calendarViewMode === 'demand') {
+                          start.setMonth(0); // Jan 1st of current year
+                          start.setDate(1);
+                          
+                          end.setMonth(11); // Dec 31st of current year
+                          end.setDate(31);
+                        } else {
+                          // Appointments: Current month to 12 months in future
+                          start.setDate(1);
+                          
+                          end.setFullYear(start.getFullYear() + 1);
+                          end.setMonth(start.getMonth());
+                          end.setDate(0); // Last day of previous month next year
+                        }
 
                         const dates: Date[] = [];
                         const curr = new Date(start);
@@ -3396,10 +3407,12 @@ export default function App() {
                                     key={idx}
                                     id={isFirstOfCurrentMonth ? 'heatmap-current-month' : undefined}
                                     onClick={() => {
-                                      setQuickBookDate(dateStr);
-                                      setIsQuickBookingOpen(true);
+                                      if (dateStr >= todayStr) {
+                                        setQuickBookDate(dateStr);
+                                        setIsQuickBookingOpen(true);
+                                      }
                                     }}
-                                    className={`p-3 rounded-lg border text-sm min-h-[85px] flex flex-col transition-all shadow-sm cursor-pointer hover:border-blue-300 hover:shadow-md ${shadeClass}`}
+                                    className={`p-3 rounded-lg border text-sm min-h-[85px] flex flex-col transition-all shadow-sm ${dateStr >= todayStr ? 'cursor-pointer hover:border-blue-300 hover:shadow-md ' + shadeClass : 'cursor-not-allowed opacity-60 bg-slate-50'}`}
                                   >
                                     <div className={`flex justify-between items-center mb-2 ${hasAppointments ? 'text-blue-700 font-bold' : 'text-slate-400'}`}>
                                       <span className="font-bold text-[11px]">{dayLabel}</span>
