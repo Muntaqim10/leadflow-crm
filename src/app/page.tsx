@@ -674,13 +674,15 @@ export default function App() {
 
   // Auto-scroll calendar to current month
   useEffect(() => {
-    if (activeTab === 'heatmap' && !startDate && !endDate && !isLoading) {
+    if (activeTab === 'heatmap' && !isLoading) {
       setTimeout(() => {
         const el = document.getElementById('heatmap-current-month');
-        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      }, 100);
+        if (el) {
+          el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }
+      }, 250); // slight delay to ensure DOM is ready
     }
-  }, [activeTab, calendarViewMode, startDate, endDate, heatmap, liveAppointments, isLoading]);
+  }, [activeTab, calendarViewMode, isLoading]);
 
   // Fetch all initial data
   const fetchData = async () => {
