@@ -2215,20 +2215,22 @@ export default function App() {
                         </div>
                       </div>
 
-                      <form onSubmit={handleCreateTask} className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4">
-                        <div className="flex flex-col sm:flex-row gap-3">
+                      <form onSubmit={handleCreateTask} className="bg-slate-50 border border-slate-200 rounded-lg p-3 mb-4 space-y-2.5">
+                        <div>
                           <input
                             type="text"
                             value={newTaskDescription}
                             onChange={(e) => setNewTaskDescription(e.target.value)}
                             placeholder="New task description..."
-                            className="flex-1 min-w-[200px] bg-white border border-slate-300 rounded-md p-2 outline-none focus:border-blue-500 text-xs"
+                            className="w-full bg-white border border-slate-300 rounded-md p-2 outline-none focus:border-blue-500 text-xs text-slate-800"
                             required
                           />
+                        </div>
+                        <div className="flex flex-wrap items-center gap-2">
                           <select
                             value={newTaskAssignee}
                             onChange={(e) => setNewTaskAssignee(e.target.value)}
-                            className="w-[120px] shrink-0 bg-white border border-slate-300 rounded-md p-2 outline-none focus:border-blue-500 text-xs"
+                            className="flex-1 min-w-[120px] bg-white border border-slate-300 rounded-md p-2 outline-none focus:border-blue-500 text-xs text-slate-700"
                           >
                             <option value="">Assign To</option>
                             {users.map(u => (
@@ -2238,7 +2240,7 @@ export default function App() {
                           <select
                             value={newTaskLeadId}
                             onChange={(e) => setNewTaskLeadId(e.target.value)}
-                            className="w-[140px] shrink-0 bg-white border border-slate-300 rounded-md p-2 outline-none focus:border-blue-500 text-xs"
+                            className="flex-1 min-w-[130px] bg-white border border-slate-300 rounded-md p-2 outline-none focus:border-blue-500 text-xs text-slate-700"
                           >
                             <option value="">Link Lead</option>
                             {activeLeads.map(l => (
@@ -2249,14 +2251,14 @@ export default function App() {
                             type="datetime-local"
                             value={newTaskDueDate}
                             onChange={(e) => setNewTaskDueDate(e.target.value)}
-                            className="w-[130px] shrink-0 bg-white border border-slate-300 rounded-md p-2 outline-none focus:border-blue-500 text-xs"
+                            className="flex-1 min-w-[170px] bg-white border border-slate-300 rounded-md p-2 outline-none focus:border-blue-500 text-xs text-slate-700"
                           />
                           <button
                             type="submit"
                             disabled={!newTaskDescription.trim()}
-                            className="shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-md text-xs transition-colors disabled:opacity-50"
+                            className="shrink-0 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold px-4 py-2 rounded-md text-xs transition-colors disabled:opacity-50 shadow-xs"
                           >
-                            + Add
+                            + Add Task
                           </button>
                         </div>
                       </form>
