@@ -533,7 +533,7 @@ export default function App() {
 
   // Quick book calendar states
   const [quickBookDate, setQuickBookDate] = useState('');
-  const [quickBookLeadId, setQuickBookLeadId] = useState('');
+  const [quickBookClientName, setQuickBookClientName] = useState('');
   const [quickBookTime, setQuickBookTime] = useState('10:00 AM');
   const [quickBookType, setQuickBookType] = useState('Site Tour');
   const [quickBookAgentId, setQuickBookAgentId] = useState('1');
@@ -1114,8 +1114,8 @@ export default function App() {
 
   const handleSaveQuickAppointment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!quickBookLeadId) {
-      setErrorMsg('Please select a lead to book the appointment for.');
+    if (!quickBookClientName) {
+      setErrorMsg('Please enter a client name for the appointment.');
       return;
     }
 
@@ -1123,13 +1123,12 @@ export default function App() {
     setErrorMsg('');
 
     try {
-      const selectedLeadData = leads.find(l => l.id === quickBookLeadId);
       const res = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lead_id: quickBookLeadId,
-          agent_id: selectedLeadData?.assigned_sales_manager_id || quickBookAgentId,
+          client_name: quickBookClientName,
+          agent_id: '1', // default agent
           type: quickBookType,
           appointment_date: quickBookDate,
           appointment_time: quickBookTime
@@ -5017,20 +5016,15 @@ export default function App() {
               </div>
 
               <div className="space-y-1">
-                <label className="font-bold block">Select Lead</label>
-                <select
-                  value={quickBookLeadId}
-                  onChange={(e) => setQuickBookLeadId(e.target.value)}
+                <label className="font-bold block">Client Name</label>
+                <input
+                  type="text"
+                  value={quickBookClientName}
+                  onChange={(e) => setQuickBookClientName(e.target.value)}
+                  placeholder="e.g. John Doe"
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 focus:border-blue-500 focus:bg-white outline-none font-medium text-slate-800"
                   required
-                >
-                  <option value="">-- Choose a Lead --</option>
-                  {leads.map(lead => (
-                    <option key={lead.id} value={lead.id}>
-                      {lead.name_company} (${parseFloat(lead.revenue_potential || '0').toLocaleString()} potential)
-                    </option>
-                  ))}
-                </select>
+                />
               </div>
 
               <div className="space-y-1">

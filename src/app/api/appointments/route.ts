@@ -29,17 +29,36 @@ export async function POST(request: Request) {
   try {
     const supabase = getSupabaseClient();
     const body = await request.json();
-    const { lead_id, agent_id, type, appointment_date, appointment_time } = body;
+    const { lead_id, client_name, agent_id, type, appointment_date, appointment_time } = body;
 
     // Validate
-    if (!lead_id || !type || !appointment_date || !appointment_time) {
+    if (!(lead_id || client_name) || !type || !appointment_date || !appointment_time) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+    }
+
+    let finalLeadId = lead_id;
+
+    // If client_name is provided instead of lead_id, auto-create a lead
+    if (!finalLeadId && client_name) {
+      const { data: newLead, error: leadError } = await supabase
+        .from('leads')
+        .insert([{
+          name_company: client_name,
+          status: 'new',
+          lead_source: 'direct',
+          assigned_sales_manager_id: agent_id || null
+        }])
+        .select('id')
+        .single();
+
+      if (leadError) throw leadError;
+      finalLeadId = newLead.id;
     }
 
     const { data, error } = await supabase
       .from('appointments')
       .insert([
-        { lead_id, agent_id: agent_id || null, type, appointment_date, appointment_time }
+        { lead_id: finalLeadId, agent_id: agent_id || null, type, appointment_date, appointment_time }
       ])
       .select(`
         *,
@@ -55,7 +74,7 @@ export async function POST(request: Request) {
       await supabase.from('lead_activities').insert([
         {
           id: crypto.randomUUID(),
-          lead_id,
+          lead_id: finalLeadId,
           activity_type: 'appointment_scheduled',
           description: `Scheduled appointment: ${type} on ${new Date(appointment_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })} at ${appointment_time}`
         }
