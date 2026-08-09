@@ -2295,9 +2295,12 @@ export default function App() {
                               className="w-full bg-white border border-slate-300 rounded-md p-2 outline-none focus:border-blue-500 text-xs text-slate-700"
                             />
                             <datalist id="leads-list">
-                              {allActiveLeadsForSearch.map(l => (
-                                <option key={l.id} value={l.name_company} />
-                              ))}
+                              {allActiveLeadsForSearch
+                                .filter(l => !taskLeadSearchTerm || l.name_company.toLowerCase().includes(taskLeadSearchTerm.toLowerCase()))
+                                .slice(0, 10)
+                                .map(l => (
+                                  <option key={l.id} value={l.name_company} />
+                                ))}
                             </datalist>
                           </div>
                           <input
