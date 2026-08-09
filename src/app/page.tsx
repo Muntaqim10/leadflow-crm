@@ -2105,33 +2105,8 @@ export default function App() {
           {activeTab === 'heatmap' && (
             <div className="hidden md:flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 shadow-sm">
               <span className="font-bold text-[10px] uppercase text-slate-500 px-2 border-r border-slate-200">
-                {calendarViewMode === 'demand' ? '🔥 Stay Demand Range:' : '📅 Meetings Range:'}
+                {calendarViewMode === 'demand' ? '🔥 4-Month Stay Demand Forecast' : '📅 4-Month Appointments Schedule'}
               </span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-                className="bg-transparent px-2 py-0.5 outline-none text-slate-800 focus:text-blue-600 font-medium"
-              />
-              <span className="text-slate-400 font-medium">to</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-                className="bg-transparent px-2 py-0.5 outline-none text-slate-800 focus:text-blue-600 font-medium"
-              />
-              {(startDate !== getDefaultStartDate() || endDate !== getDefaultEndDate()) && (
-                <button
-                  onClick={() => {
-                    setStartDate(getDefaultStartDate());
-                    setEndDate(getDefaultEndDate());
-                  }}
-                  className="text-slate-400 hover:text-slate-600 font-bold px-2 cursor-pointer text-sm"
-                  title="Reset to full month"
-                >
-                  &times;
-                </button>
-              )}
             </div>
           )}
 
@@ -3253,35 +3228,18 @@ export default function App() {
                     {/* Dynamic calendar grid matching global date filter */}
                     {(() => {
                       const getCalendarDays = () => {
-                        const now = new Date();
-                        const currentYear = now.getFullYear();
-
-                        let start: Date;
-                        let end: Date;
-
-                        if (startDate) {
-                          start = new Date(startDate + 'T00:00:00');
-                        } else {
-                          // Default to Jan 1st of current year
-                          start = new Date(currentYear, 0, 1);
-                        }
-
-                        if (endDate) {
-                          end = new Date(endDate + 'T00:00:00');
-                        } else {
-                          // Default to Dec 31st of current year
-                          end = new Date(currentYear, 11, 31);
-                        }
-
-                        if (start > end) return [];
+                        const start = new Date();
+                        start.setDate(1); // Start of current month
+                        
+                        const end = new Date(start);
+                        end.setMonth(end.getMonth() + 4);
+                        end.setDate(0); // End of 4th month
 
                         const dates: Date[] = [];
                         const curr = new Date(start);
-                        let limit = 0;
-                        while (curr <= end && limit < 366) {
+                        while (curr <= end) {
                           dates.push(new Date(curr));
                           curr.setDate(curr.getDate() + 1);
-                          limit++;
                         }
                         return dates;
                       };
@@ -4113,6 +4071,7 @@ export default function App() {
                                 <input
                                   type="date"
                                   required
+                                  min={todayStr}
                                   value={appointmentDate}
                                   onChange={e => setAppointmentDate(e.target.value)}
                                   className="w-full bg-white border border-slate-300 rounded p-2 text-xs outline-none focus:border-blue-500"
@@ -5021,6 +4980,7 @@ export default function App() {
                 <label className="font-bold block">Selected Date</label>
                 <input
                   type="date"
+                  min={todayStr}
                   value={quickBookDate}
                   onChange={(e) => setQuickBookDate(e.target.value)}
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 focus:border-blue-500 focus:bg-white outline-none"
@@ -5128,6 +5088,7 @@ export default function App() {
                   <label className="font-bold block">Date</label>
                   <input
                     type="date"
+                    min={todayStr}
                     value={editApptDate}
                     onChange={(e) => setEditApptDate(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 focus:border-blue-500 focus:bg-white outline-none"
