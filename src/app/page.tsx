@@ -570,7 +570,7 @@ export default function App() {
   const [isUploading, setIsUploading] = useState(false);
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   const [startDate, setStartDate] = useState(getDefaultStartDate());
-  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [endDate, setEndDate] = useState(getDefaultEndDate());
   const [dateFilterType, setDateFilterType] = useState<'created_at' | 'check_in'>('created_at');
   const [formLostReason, setFormLostReason] = useState('');
 
@@ -665,6 +665,12 @@ export default function App() {
       fetchHeatmapData();
     }
   }, [startDate, endDate, dateFilterType, session]);
+
+  useEffect(() => {
+    if (activeTab === 'heatmap' && endDate === todayStr) {
+      setEndDate(getDefaultEndDate());
+    }
+  }, [activeTab]);
 
   // Auto-scroll heatmap to current month
   useEffect(() => {
@@ -2045,8 +2051,8 @@ export default function App() {
             </button>
           </div>
 
-          {/* Centralized Global Date Filter Controls */}
-          {(activeTab === 'dashboard' || activeTab === 'kanban' || activeTab === 'analytics' || activeTab === 'heatmap') && (
+          {/* Global Date Filter Controls for Dashboard, Leads (Kanban), and Analytics */}
+          {(activeTab === 'dashboard' || activeTab === 'kanban' || activeTab === 'analytics') && (
             <div className="hidden md:flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 shadow-sm">
               <select
                 value={dateFilterType}
@@ -2088,6 +2094,40 @@ export default function App() {
                   }}
                   className="text-slate-400 hover:text-slate-600 font-bold px-2 cursor-pointer text-sm"
                   title="Clear date filter"
+                >
+                  &times;
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Calendar View Date Range Controls (Full Month View, Uncapped) */}
+          {activeTab === 'heatmap' && (
+            <div className="hidden md:flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 shadow-sm">
+              <span className="font-bold text-[10px] uppercase text-slate-500 px-2 border-r border-slate-200">
+                {calendarViewMode === 'demand' ? '🔥 Stay Demand Range:' : '📅 Meetings Range:'}
+              </span>
+              <input
+                type="date"
+                value={startDate}
+                onChange={(e) => setStartDate(e.target.value)}
+                className="bg-transparent px-2 py-0.5 outline-none text-slate-800 focus:text-blue-600 font-medium"
+              />
+              <span className="text-slate-400 font-medium">to</span>
+              <input
+                type="date"
+                value={endDate}
+                onChange={(e) => setEndDate(e.target.value)}
+                className="bg-transparent px-2 py-0.5 outline-none text-slate-800 focus:text-blue-600 font-medium"
+              />
+              {(startDate !== getDefaultStartDate() || endDate !== getDefaultEndDate()) && (
+                <button
+                  onClick={() => {
+                    setStartDate(getDefaultStartDate());
+                    setEndDate(getDefaultEndDate());
+                  }}
+                  className="text-slate-400 hover:text-slate-600 font-bold px-2 cursor-pointer text-sm"
+                  title="Reset to full month"
                 >
                   &times;
                 </button>
