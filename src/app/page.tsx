@@ -2177,25 +2177,29 @@ export default function App() {
               {activeTab === 'dashboard' && (
                 <div className="space-y-8 animate-fadeIn">
                   {/* Summary Metric Cards */}
-                  <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
-                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
-                      <div className="absolute right-4 top-4 p-3 bg-blue-500/10 rounded-lg text-blue-400 border border-blue-500/10">
-                        <Users className="h-5 w-5" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">
+                          {(startDate || endDate) ? 'Filtered Leads' : 'Total Leads'}
+                        </span>
+                        <div className="p-2.5 bg-blue-500/10 rounded-lg text-blue-500 border border-blue-500/10 shrink-0">
+                          <Users className="h-5 w-5" />
+                        </div>
                       </div>
-                      <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">
-                        {(startDate || endDate) ? 'Filtered Leads' : 'Total Leads'}
-                      </span>
                       <h3 className="text-3xl font-extrabold text-slate-900 mt-2">{analytics?.summary.totalLeads || filteredLeads.length}</h3>
                       <div className="text-[11px] text-slate-500 mt-2 flex items-center gap-1">
                         <span className="text-emerald-600 font-bold">Live</span> database connection
                       </div>
                     </div>
 
-                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
-                      <div className="absolute right-4 top-4 p-3 bg-emerald-500/10 rounded-lg text-emerald-400 border border-emerald-500/10">
-                        <CheckCircle2 className="h-5 w-5" />
+                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">Conversion Rate</span>
+                        <div className="p-2.5 bg-emerald-500/10 rounded-lg text-emerald-500 border border-emerald-500/10 shrink-0">
+                          <CheckCircle2 className="h-5 w-5" />
+                        </div>
                       </div>
-                      <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">Conversion Rate</span>
                       <h3 className="text-3xl font-extrabold text-slate-900 mt-2">
                         {analytics?.summary.conversionRate ? `${analytics.summary.conversionRate.toFixed(1)}%` : '0%'}
                       </h3>
@@ -2204,24 +2208,28 @@ export default function App() {
                       </div>
                     </div>
 
-                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
-                      <div className="absolute right-4 top-4 p-3 bg-blue-500/10 rounded-lg text-sky-400 border border-blue-500/10">
-                        <DollarSign className="h-5 w-5" />
+                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">Confirmed Revenue</span>
+                        <div className="p-2.5 bg-blue-500/10 rounded-lg text-sky-500 border border-blue-500/10 shrink-0">
+                          <DollarSign className="h-5 w-5" />
+                        </div>
                       </div>
-                      <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">Confirmed Revenue</span>
                       <h3 className="text-3xl font-extrabold text-slate-900 mt-2">
                         ${analytics?.summary.revenueGenerated.toLocaleString() || '0'}
                       </h3>
-                      <div className="text-[11px] text-emerald-400 font-medium mt-2">
+                      <div className="text-[11px] text-emerald-600 font-medium mt-2">
                         Converted bookings
                       </div>
                     </div>
 
-                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden">
-                      <div className="absolute right-4 top-4 p-3 bg-sky-50 rounded-lg text-sky-600 border border-sky-100">
-                        <TrendingUp className="h-5 w-5" />
+                    <div className="bg-white p-6 rounded-xl border border-slate-200 shadow-sm relative overflow-hidden flex flex-col justify-between">
+                      <div className="flex items-start justify-between gap-3">
+                        <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">Potential Revenue</span>
+                        <div className="p-2.5 bg-sky-50 rounded-lg text-sky-600 border border-sky-100 shrink-0">
+                          <TrendingUp className="h-5 w-5" />
+                        </div>
                       </div>
-                      <span className="text-xs text-slate-500 uppercase tracking-wider font-bold">Potential Revenue</span>
                       <h3 className="text-3xl font-extrabold text-slate-900 mt-2">
                         ${analytics?.summary.potentialRevenue.toLocaleString() || '0'}
                       </h3>
