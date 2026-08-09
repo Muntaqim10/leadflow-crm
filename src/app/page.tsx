@@ -823,6 +823,7 @@ export default function App() {
       setNewTaskAssignee('');
       setNewTaskDueDate('');
       setNewTaskLeadId('');
+      setTaskLeadSearchTerm('');
     } catch (err: any) {
       console.error(err);
       setErrorMsg('Failed to create task: ' + err.message);
@@ -2275,46 +2276,29 @@ export default function App() {
                               <option key={u.id} value={u.id}>{u.name}</option>
                             ))}
                           </select>
-                          <div className="relative flex-1 min-w-[130px]">
+                          <div className="flex-1 min-w-[130px]">
                             <input
+                              list="leads-list"
                               type="text"
-                              value={isTaskLeadSearchOpen ? taskLeadSearchTerm : (newTaskLeadId ? allActiveLeadsForSearch.find(l => l.id === newTaskLeadId)?.name_company || '' : '')}
+                              value={taskLeadSearchTerm || (newTaskLeadId ? allActiveLeadsForSearch.find(l => l.id === newTaskLeadId)?.name_company || '' : '')}
                               onChange={(e) => {
-                                setTaskLeadSearchTerm(e.target.value);
-                                setNewTaskLeadId('');
-                                setIsTaskLeadSearchOpen(true);
+                                const val = e.target.value;
+                                setTaskLeadSearchTerm(val);
+                                const matchedLead = allActiveLeadsForSearch.find(l => l.name_company === val);
+                                if (matchedLead) {
+                                  setNewTaskLeadId(matchedLead.id);
+                                } else {
+                                  setNewTaskLeadId('');
+                                }
                               }}
-                              onFocus={() => {
-                                setTaskLeadSearchTerm('');
-                                setIsTaskLeadSearchOpen(true);
-                              }}
-                              onBlur={() => setTimeout(() => setIsTaskLeadSearchOpen(false), 200)}
                               placeholder="Link Lead (Search...)"
                               className="w-full bg-white border border-slate-300 rounded-md p-2 outline-none focus:border-blue-500 text-xs text-slate-700"
                             />
-                            {isTaskLeadSearchOpen && (
-                              <div className="absolute z-10 w-[250px] mt-1 bg-white border border-slate-200 rounded-md shadow-lg max-h-[200px] overflow-y-auto">
-                                {allActiveLeadsForSearch
-                                  .filter(l => !taskLeadSearchTerm || l.name_company.toLowerCase().includes(taskLeadSearchTerm.toLowerCase()))
-                                  .slice(0, 50)
-                                  .map(l => (
-                                    <div
-                                      key={l.id}
-                                      onClick={() => {
-                                        setNewTaskLeadId(l.id);
-                                        setTaskLeadSearchTerm('');
-                                        setIsTaskLeadSearchOpen(false);
-                                      }}
-                                      className="p-2 text-xs hover:bg-slate-50 cursor-pointer text-slate-700 truncate border-b border-slate-100 last:border-0"
-                                    >
-                                      {l.name_company}
-                                    </div>
-                                  ))}
-                                {allActiveLeadsForSearch.filter(l => !taskLeadSearchTerm || l.name_company.toLowerCase().includes(taskLeadSearchTerm.toLowerCase())).length === 0 && (
-                                  <div className="p-2 text-xs text-slate-400 italic">No leads found</div>
-                                )}
-                              </div>
-                            )}
+                            <datalist id="leads-list">
+                              {allActiveLeadsForSearch.map(l => (
+                                <option key={l.id} value={l.name_company} />
+                              ))}
+                            </datalist>
                           </div>
                           <input
                             type="datetime-local"
