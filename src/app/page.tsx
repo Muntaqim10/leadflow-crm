@@ -568,9 +568,9 @@ export default function App() {
   const [formDocumentUrl, setFormDocumentUrl] = useState('');
   const [formDocumentName, setFormDocumentName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
-  const [copiedLink, setCopiedLink] = useState(false);
+  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
   const [startDate, setStartDate] = useState(getDefaultStartDate());
-  const [endDate, setEndDate] = useState(getDefaultEndDate());
+  const [endDate, setEndDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [dateFilterType, setDateFilterType] = useState<'created_at' | 'check_in'>('created_at');
   const [formLostReason, setFormLostReason] = useState('');
 
@@ -2050,7 +2050,16 @@ export default function App() {
             <div className="hidden md:flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 shadow-sm">
               <select
                 value={dateFilterType}
-                onChange={(e) => setDateFilterType(e.target.value as any)}
+                onChange={(e) => {
+                  const newType = e.target.value as 'created_at' | 'check_in';
+                  setDateFilterType(newType);
+                  if (newType === 'created_at') {
+                    if (endDate > todayStr) setEndDate(todayStr);
+                    if (startDate > todayStr) setStartDate(getDefaultStartDate());
+                  } else {
+                    if (endDate === todayStr) setEndDate(getDefaultEndDate());
+                  }
+                }}
                 className="bg-transparent font-bold text-[10px] uppercase text-slate-500 px-2 outline-none border-r border-slate-200 cursor-pointer"
               >
                 <option value="created_at">Created Date</option>
@@ -2059,6 +2068,7 @@ export default function App() {
               <input
                 type="date"
                 value={startDate}
+                max={dateFilterType === 'created_at' ? todayStr : undefined}
                 onChange={(e) => setStartDate(e.target.value)}
                 className="bg-transparent px-2 py-0.5 outline-none text-slate-800 focus:text-blue-600 font-medium"
               />
@@ -2066,14 +2076,15 @@ export default function App() {
               <input
                 type="date"
                 value={endDate}
+                max={dateFilterType === 'created_at' ? todayStr : undefined}
                 onChange={(e) => setEndDate(e.target.value)}
                 className="bg-transparent px-2 py-0.5 outline-none text-slate-800 focus:text-blue-600 font-medium"
               />
-              {(startDate !== getDefaultStartDate() || endDate !== getDefaultEndDate()) && (
+              {(startDate !== getDefaultStartDate() || (dateFilterType === 'created_at' ? endDate !== todayStr : endDate !== getDefaultEndDate())) && (
                 <button
                   onClick={() => {
                     setStartDate(getDefaultStartDate());
-                    setEndDate(getDefaultEndDate());
+                    setEndDate(dateFilterType === 'created_at' ? todayStr : getDefaultEndDate());
                   }}
                   className="text-slate-400 hover:text-slate-600 font-bold px-2 cursor-pointer text-sm"
                   title="Clear date filter"
