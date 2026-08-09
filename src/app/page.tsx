@@ -5183,24 +5183,20 @@ export default function App() {
                 </div>
 
                 <div className="flex gap-3 pt-6 border-t border-slate-200">
-                  {activeAppointment.appointment_date >= todayStr && (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => setIsEditingAppointment(true)}
-                        className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg font-semibold border border-slate-200 transition-colors"
-                      >
-                        ✏️ Reschedule
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => handleDeleteAppointment(activeAppointment.id)}
-                        className="flex-1 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 py-2 rounded-lg font-semibold transition-colors"
-                      >
-                        🚫 Cancel Meeting
-                      </button>
-                    </>
-                  )}
+                  <button
+                    type="button"
+                    onClick={() => setIsEditingAppointment(true)}
+                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded-lg font-semibold border border-slate-200 transition-colors"
+                  >
+                    ✏️ Reschedule
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteAppointment(activeAppointment.id)}
+                    className="flex-1 bg-rose-50 border border-rose-200 hover:bg-rose-100 text-rose-700 py-2 rounded-lg font-semibold transition-colors"
+                  >
+                    🚫 Cancel Meeting
+                  </button>
                   <button
                     type="button"
                     onClick={() => setActiveAppointment(null)}
