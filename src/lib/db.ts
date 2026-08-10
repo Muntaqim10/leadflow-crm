@@ -4,13 +4,25 @@ import { cookies } from 'next/headers';
 
 let isSupabaseOffline = false;
 
-export async function getSupabaseClient(): Promise<any> {
+export async function getSupabaseClient(useServiceRole = false): Promise<any> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const activeKey = useServiceRole && process.env.SUPABASE_SERVICE_ROLE_KEY
+    ? process.env.SUPABASE_SERVICE_ROLE_KEY
+    : (process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '');
 
-  if (isSupabaseOffline || !supabaseUrl || !supabaseKey || !supabaseUrl.startsWith('http')) {
+  if (isSupabaseOffline || !supabaseUrl || !activeKey || !supabaseUrl.startsWith('http')) {
     isSupabaseOffline = true;
     return new MockSupabaseClient();
+  }
+
+  // If using service role key, we do not append the user bearer token (to avoid auth conflict)
+  if (useServiceRole) {
+    return createClient(supabaseUrl, activeKey, {
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      }
+    });
   }
 
   let token: string | undefined;
@@ -22,7 +34,7 @@ export async function getSupabaseClient(): Promise<any> {
   }
 
   if (token) {
-    return createClient(supabaseUrl, supabaseKey, {
+    return createClient(supabaseUrl, activeKey, {
       global: {
         headers: {
           Authorization: `Bearer ${token}`
@@ -35,7 +47,7 @@ export async function getSupabaseClient(): Promise<any> {
     });
   }
 
-  return createClient(supabaseUrl, supabaseKey, {
+  return createClient(supabaseUrl, activeKey, {
     auth: {
       persistSession: false,
       autoRefreshToken: false,
@@ -473,4 +485,59 @@ export async function initDatabase(): Promise<string[]> {
 
 export async function seedMockData(): Promise<void> {
   console.log('Seed mock data called');
+  const supabase = await getSupabaseClient(true);
+  if (!supabase || isSupabaseOffline) {
+    console.warn('Cannot seed mock data: Supabase is offline or uninitialized.');
+    return;
+  }
+
+  try {
+    console.log('Seeding leads...');
+    for (const lead of mockLeads) {
+      const { error } = await supabase.from('leads').upsert(lead);
+      if (error) console.error(`Error seeding lead ${lead.id}:`, error.message);
+    }
+
+    console.log('Seeding email templates...');
+    for (const tpl of mockTemplates) {
+      // Upsert resolving conflicts on template_type
+      const { error } = await supabase.from('email_templates').upsert(tpl, { onConflict: 'template_type' });
+      if (error) console.error(`Error seeding template ${tpl.id}:`, error.message);
+    }
+
+    console.log('Seeding appointments...');
+    const appointmentsList = [
+      { id: '00000000-0000-0000-0000-000000000001', lead_id: 'lead-1', agent_id: '3', type: 'Site Tour', appointment_date: '2026-08-05', appointment_time: '10:00 AM' },
+      { id: '00000000-0000-0000-0000-000000000002', lead_id: 'lead-2', agent_id: '1', type: 'Menu Tasting', appointment_date: '2026-08-08', appointment_time: '02:00 PM' }
+    ];
+    for (const app of appointmentsList) {
+      const { error } = await supabase.from('appointments').upsert(app);
+      if (error) console.error(`Error seeding appointment ${app.id}:`, error.message);
+    }
+
+    console.log('Seeding tasks...');
+    const tasksList = [
+      { id: '00000000-0000-0000-0000-000000000003', description: 'Send updated contract to Sarah Jenkins', assigned_to: '3', due_date: '2026-08-03T17:00', status: 'pending', lead_id: 'lead-1' },
+      { id: '00000000-0000-0000-0000-000000000004', description: 'Confirm AV equipment setup for Michael Chang', assigned_to: '1', due_date: '2026-08-04T12:00', status: 'pending', lead_id: 'lead-2' }
+    ];
+    for (const task of tasksList) {
+      const { error } = await supabase.from('tasks').upsert(task);
+      if (error) console.error(`Error seeding task ${task.id}:`, error.message);
+    }
+
+    console.log('Seeding users...');
+    const now = new Date().toISOString();
+    const usersList = [
+      { id: '1', name: 'Arzaan Shaikh', role: 'General Manager', created_at: now, updated_at: now },
+      { id: '2', name: 'Rokeya Ahmed', role: 'Director of Sales', created_at: now, updated_at: now },
+      { id: '3', name: 'Riham Mohammed Jehangir', role: 'Sales Manager', created_at: now, updated_at: now },
+      { id: '4', name: 'Muntaqim Elahi', role: 'Front Desk Supervisor', created_at: now, updated_at: now }
+    ];
+    for (const u of usersList) {
+      const { error } = await supabase.from('users').upsert(u);
+      if (error) console.error(`Error seeding user ${u.id}:`, error.message);
+    }
+  } catch (err) {
+    console.error('Seed mock data error:', err);
+  }
 }
