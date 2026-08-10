@@ -914,6 +914,9 @@ export default function App() {
 
   const handleSignOut = async () => {
     try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch (e) { console.error('Logout API error', e); }
+    try {
       await supabase.auth.signOut();
     } catch (e) { }
     if (typeof window !== 'undefined') {

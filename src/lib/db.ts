@@ -1,21 +1,46 @@
 import { createClient } from '@supabase/supabase-js';
 
-let supabaseClient: any = null;
+import { cookies } from 'next/headers';
+
 let isSupabaseOffline = false;
 
-export function getSupabaseClient() {
-  if (supabaseClient) return supabaseClient;
-
+export async function getSupabaseClient(): Promise<any> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-  if (!supabaseUrl || !supabaseKey || !supabaseUrl.startsWith('http')) {
+  if (isSupabaseOffline || !supabaseUrl || !supabaseKey || !supabaseUrl.startsWith('http')) {
     isSupabaseOffline = true;
-    return null;
+    return new MockSupabaseClient();
   }
 
-  supabaseClient = createClient(supabaseUrl, supabaseKey);
-  return supabaseClient;
+  let token: string | undefined;
+  try {
+    const cookieStore = await cookies();
+    token = cookieStore.get('auth_token')?.value;
+  } catch (e) {
+    // If not in a request context, token will be undefined
+  }
+
+  if (token) {
+    return createClient(supabaseUrl, supabaseKey, {
+      global: {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      },
+      auth: {
+        persistSession: false,
+        autoRefreshToken: false,
+      }
+    });
+  }
+
+  return createClient(supabaseUrl, supabaseKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+    }
+  });
 }
 
 export interface RowData {
@@ -145,6 +170,156 @@ const memoryStore: Record<string, RowData[]> = {
   ]
 };
 
+class MockQueryBuilder {
+  private tableName: string;
+  private queryData: any[];
+  private isSingle = false;
+
+  constructor(tableName: string) {
+    this.tableName = tableName;
+    this.queryData = JSON.parse(JSON.stringify(memoryStore[tableName] || []));
+  }
+
+  select(fields?: string) {
+    this.queryData = this.queryData.map(item => {
+      const copy = { ...item };
+      
+      // Emulate join for users (assignee)
+      if (copy.assigned_to) {
+        const user = memoryStore['users']?.find(u => u.id === copy.assigned_to);
+        if (user) {
+          copy.assignee = { name: user.name, role: user.role };
+        }
+      }
+      
+      // Emulate join for sales managers
+      if (copy.assigned_sales_manager_id) {
+        const user = memoryStore['users']?.find(u => u.id === copy.assigned_sales_manager_id);
+        if (user) {
+          copy.assigned_sales_manager = { name: user.name, role: user.role };
+        }
+      }
+
+      // Emulate join for leads
+      if (copy.lead_id) {
+        const lead = memoryStore['leads']?.find(l => l.id === copy.lead_id);
+        if (lead) {
+          copy.lead = { name_company: lead.name_company };
+        }
+      }
+
+      return copy;
+    });
+
+    return this;
+  }
+
+  insert(data: any | any[]) {
+    const rows = Array.isArray(data) ? data : [data];
+    const inserted = rows.map(row => {
+      const newRow = {
+        id: row.id || crypto.randomUUID(),
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+        ...row
+      };
+      if (!memoryStore[this.tableName]) {
+        memoryStore[this.tableName] = [];
+      }
+      memoryStore[this.tableName].push(newRow);
+      return newRow;
+    });
+    this.queryData = inserted;
+    return this;
+  }
+
+  update(data: any) {
+    this.queryData = this.queryData.map(item => {
+      const updated = {
+        ...item,
+        ...data,
+        updated_at: new Date().toISOString()
+      };
+      const idx = memoryStore[this.tableName]?.findIndex(x => x.id === item.id);
+      if (idx !== -1 && idx !== undefined) {
+        memoryStore[this.tableName][idx] = {
+          ...memoryStore[this.tableName][idx],
+          ...data,
+          updated_at: new Date().toISOString()
+        };
+      }
+      return updated;
+    });
+    return this;
+  }
+
+  delete() {
+    this.queryData.forEach(item => {
+      const idx = memoryStore[this.tableName]?.findIndex(x => x.id === item.id);
+      if (idx !== -1 && idx !== undefined) {
+        memoryStore[this.tableName].splice(idx, 1);
+      }
+    });
+    this.queryData = [];
+    return this;
+  }
+
+  eq(field: string, value: any) {
+    this.queryData = this.queryData.filter(item => item[field] === value);
+    return this;
+  }
+
+  order(field: string, options?: { ascending?: boolean }) {
+    const asc = options?.ascending !== false;
+    this.queryData.sort((a, b) => {
+      if (a[field] < b[field]) return asc ? -1 : 1;
+      if (a[field] > b[field]) return asc ? 1 : -1;
+      return 0;
+    });
+    return this;
+  }
+
+  limit(num: number) {
+    this.queryData = this.queryData.slice(0, num);
+    return this;
+  }
+
+  single() {
+    this.isSingle = true;
+    return this;
+  }
+
+  then(onfulfilled?: (value: any) => any, onrejected?: (reason: any) => any) {
+    const result = {
+      data: this.isSingle ? (this.queryData[0] || null) : this.queryData,
+      error: null
+    };
+    return Promise.resolve(result).then(onfulfilled, onrejected);
+  }
+}
+
+class MockSupabaseClient {
+  storage = {
+    from(bucketName: string) {
+      return {
+        async upload(path: string, body: any, options?: any) {
+          console.log(`[Mock Storage Upload] Bucket: ${bucketName}, Path: ${path}`);
+          return { data: { path }, error: null };
+        },
+        getPublicUrl(path: string) {
+          const publicUrl = `${process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'}/mock-storage/${bucketName}/${path}`;
+          return { data: { publicUrl } };
+        }
+      };
+    }
+  };
+
+  from(tableName: string) {
+    return new MockQueryBuilder(tableName);
+  }
+}
+
+
 async function withTimeout<T = any>(promise: PromiseLike<T>, ms: number = 1000): Promise<T> {
   let timer: NodeJS.Timeout;
   const timeoutPromise = new Promise<never>((_, reject) => {
@@ -163,7 +338,7 @@ async function withTimeout<T = any>(promise: PromiseLike<T>, ms: number = 1000):
 export async function getRows(tableName: string): Promise<RowData[]> {
   if (isSupabaseOffline) return memoryStore[tableName] || [];
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     if (!supabase) {
       isSupabaseOffline = true;
       return memoryStore[tableName] || [];
@@ -195,7 +370,7 @@ export async function addRow(
   }
 
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     if (!supabase) throw new Error('No Supabase client');
     
     const { data: insertedData, error } = await withTimeout(
@@ -233,7 +408,7 @@ export async function updateRow(
   }
 
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     if (!supabase) throw new Error('No Supabase client');
 
     const { data: updatedData, error } = await withTimeout(
@@ -265,7 +440,7 @@ export async function deleteRow(tableName: string, id: string): Promise<void> {
   }
 
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     if (!supabase) throw new Error('No Supabase client');
     
     const { error } = await withTimeout(
@@ -285,7 +460,7 @@ export async function deleteRow(tableName: string, id: string): Promise<void> {
 export async function initDatabase(): Promise<string[]> {
   if (isSupabaseOffline) return [];
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     if (!supabase) return [];
     await withTimeout(supabase.from('users').select('id').limit(1), 1000);
     return [];

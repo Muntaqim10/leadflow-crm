@@ -10,7 +10,7 @@ export interface EmailServiceResult {
 /**
  * Generates an AI reply to a lead based on status and email template type using Groq Llama 3.1
  */
-export async function generateAiEmail(leadId: string, templateType?: string): Promise<{ logId: string; content: string; templateType: string }> {
+export async function generateAiEmail(leadId: string, templateType?: string, senderName = 'Sales Team'): Promise<{ logId: string; content: string; templateType: string }> {
   // 1. Fetch lead details
   const leads = await getRows('leads');
   const lead = leads.find((l) => l.id === leadId);
@@ -55,6 +55,9 @@ export async function generateAiEmail(leadId: string, templateType?: string): Pr
   // Replace template variables
   const rawName = lead.name_company || '';
   const clientNameOnly = rawName.split(' / ')[0] || 'Guest';
+
+  // Replace hardcoded Sarah Jenkins signature if it exists in the template
+  templateText = templateText.replace(/Sarah Jenkins/gi, senderName);
 
   // Clean up possessive event suffixes (e.g., "Arzaan's wedding night" -> "Arzaan")
   let guestName = clientNameOnly
@@ -145,6 +148,7 @@ Lead Context Details:
 - Revenue Potential: $${revenue}
 - Market Segment: ${lead.market_segment}
 - Lead Source: ${lead.lead_source}
+- Sender Name: ${senderName}
 
 Tone Guidelines:
 - If market segment is 'corporate', use a formal, polished, professional business tone.
@@ -155,6 +159,9 @@ Tone Guidelines:
 Addressing the Recipient:
 - You MUST address the recipient by their actual personal name (e.g. "Dear Arzaan," or "Dear Mr. Shaikh,") instead of using event descriptions, possessive phrases, or company suffixes (e.g. do NOT say "Dear Arzaan's wedding night," or "Dear Microsoft," or "Dear wedding night").
 - If the client name represents an event or group name and doesn't contain a clear personal name, address them politely as "Dear Guest," or "Dear Client,".
+
+Sign-off Signature:
+- You MUST sign off the email using the Sender Name: ${senderName}. Do NOT use "Sarah Jenkins" or any other name under any circumstances.
 
 Terminology Constraints:
 - When referring to pricing, totals, or room rates in the email to the client, you MUST use customer-friendly terms such as "Total Cost", "Estimated Total", "Package Price", or "Total Amount".
@@ -199,9 +206,6 @@ Output constraints:
   };
 }
 
-/**
- * Logs the email transmission to the CRM database for mailto dispatches
- */
 export async function sendEmail(logId: string, content: string, wasEditedByHuman = false): Promise<EmailServiceResult> {
   // 1. Fetch the log details
   const logs = await getRows('email_log');
@@ -232,15 +236,57 @@ export async function sendEmail(logId: string, content: string, wasEditedByHuman
     throw new Error(`Invalid recipient email address: ${recipientEmail}`);
   }
 
+  // Try actual SMTP send if configured
+  const smtpHost = process.env.SMTP_HOST;
+  const smtpPort = process.env.SMTP_PORT;
+  const smtpUser = process.env.SMTP_USER;
+  const smtpPass = process.env.SMTP_PASS;
+
+  let sendResult = '';
+  let smtpSuccess = false;
+
+  if (smtpHost && smtpUser && smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: parseInt(smtpPort || '587'),
+        secure: process.env.SMTP_SECURE === 'true',
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: process.env.SMTP_FROM || `"Leadflow CRM" <no-reply@leadflow.com>`,
+        to: recipientEmail,
+        subject: subject,
+        text: bodyText,
+      });
+
+      console.log(`[Email Dispatch] Sent via SMTP. Message ID: ${info.messageId}`);
+      sendResult = `Sent email to ${recipientEmail} via SMTP`;
+      smtpSuccess = true;
+    } catch (smtpError: any) {
+      console.error(`[Email Dispatch Failure] SMTP error: ${smtpError.message}`);
+      sendResult = `Attempted SMTP but failed: ${smtpError.message}. Logging fallback.`;
+    }
+  }
+
+  if (!smtpSuccess) {
+    // Fallback: If no SMTP configured, or SMTP failed, log mock result instead of crashing
+    sendResult = wasEditedByHuman
+      ? `Copied to clipboard and logged to CRM database (no SMTP configured)`
+      : `Logged auto-responder to CRM database (no SMTP configured)`;
+    console.log(`[Email Mock Dispatch] Log ID: ${logId}. Recipient: ${recipientEmail}`);
+  }
+
   // Update email log in database
   const updatedLog = await updateRow('email_log', logId, {
     generated_content: content,
     was_edited_by_human: wasEditedByHuman ? 'true' : 'false',
     sent_at: new Date().toISOString(),
   });
-
-  const sendResult = `Launched local mail client and logged to CRM database`;
-  console.log(`[Email Mailto Dispatch] Log ID: ${logId}. Recipient: ${recipientEmail}`);
 
   return {
     success: true,

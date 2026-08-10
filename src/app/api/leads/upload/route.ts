@@ -10,7 +10,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
 
     // Convert file to a Node Buffer
     const arrayBuffer = await file.arrayBuffer();

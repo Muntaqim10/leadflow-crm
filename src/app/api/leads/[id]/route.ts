@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import { updateRow, deleteRow, getRows, getSupabaseClient } from '@/lib/db';
-import { generateAiEmail, sendEmail } from '@/lib/email';
 
 export async function PUT(
   request: Request,
@@ -50,7 +49,7 @@ export async function PUT(
 
     // Log activities in Supabase
     try {
-      const supabase = getSupabaseClient();
+      const supabase = await getSupabaseClient();
       const activitiesToInsert = [];
 
       if (statusChanged) {
@@ -78,23 +77,6 @@ export async function PUT(
       console.error('Failed to log lead activities:', err);
     }
 
-    // 3. If status changed, automatically trigger the AI Email flow in the background
-    if (statusChanged) {
-      // Trigger asynchronously (no await) to avoid blocking the client UI
-      (async () => {
-        try {
-          console.log(`[Auto-Email] Triggered: status changed from "${oldStatus}" to "${newStatus}" for lead: ${id}`);
-          // Generate AI email draft based on status
-          const draft = await generateAiEmail(id, 'auto');
-          console.log(`[Auto-Email] Draft created (ID: ${draft.logId}). Logging to CRM database...`);
-          // Record/log automated dispatch
-          const sendResult = await sendEmail(draft.logId, draft.content, false);
-          console.log(`[Auto-Email] Completed: ${sendResult.message}`);
-        } catch (emailError: any) {
-          console.error(`[Auto-Email] Failed during background automation: ${emailError.message || emailError}`);
-        }
-      })();
-    }
 
     return NextResponse.json(updatedLead);
   } catch (error: any) {

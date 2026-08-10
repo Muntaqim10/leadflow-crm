@@ -3,7 +3,7 @@ import { getSupabaseClient } from '@/lib/db';
 
 export async function GET(request: Request) {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     
     // Fetch all appointments, joining with leads and users to get names
     const { data, error } = await supabase
@@ -27,7 +27,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     const body = await request.json();
     const { lead_id, client_name, agent_id, type, appointment_date, appointment_time } = body;
 

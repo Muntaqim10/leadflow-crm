@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     
     const { data, error } = await supabase
       .from('lead_activities')
@@ -30,7 +30,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     const body = await request.json();
     const { description, performed_by, activity_type } = body;
 

@@ -7,7 +7,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     
     // Join with users table to get assignee names
     const { data, error } = await supabase
@@ -31,7 +31,7 @@ export async function POST(
 ) {
   try {
     const { id } = await params;
-    const supabase = getSupabaseClient();
+    const supabase = await getSupabaseClient();
     const body = await request.json();
     const { description, assigned_to, due_date } = body;
 
