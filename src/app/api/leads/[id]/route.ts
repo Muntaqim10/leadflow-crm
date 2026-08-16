@@ -25,6 +25,18 @@ export async function PUT(
     const newStatus = body.status;
     const lost_reason = newStatus === 'lost' ? (body.lost_reason || 'Other') : null;
 
+    // Validate assigned manager ID against existing users
+    let assignedManagerId = body.assigned_sales_manager_id;
+    if (assignedManagerId !== undefined) {
+      try {
+        const users = await getRows('users');
+        const validUser = users.find((u) => u.id === assignedManagerId);
+        if (!validUser && assignedManagerId !== null) {
+          assignedManagerId = existingLead?.assigned_sales_manager_id || users[0]?.id || null;
+        }
+      } catch (e) {}
+    }
+
     // 2. Perform the database update
     const updatedLead = await updateRow('leads', id, {
       name_company: body.name_company,
@@ -35,7 +47,7 @@ export async function PUT(
       check_out_date: body.check_out_date,
       rooms_or_event_details: body.rooms_or_event_details,
       revenue_potential: body.revenue_potential ? parseFloat(body.revenue_potential).toString() : undefined,
-      assigned_sales_manager_id: body.assigned_sales_manager_id,
+      assigned_sales_manager_id: assignedManagerId,
       status: body.status,
       market_segment: body.market_segment,
       document_url: body.document_url || null,
@@ -49,7 +61,7 @@ export async function PUT(
 
     // Log activities in Supabase
     try {
-      const supabase = await getSupabaseClient();
+      const supabase = await getSupabaseClient(true);
       const activitiesToInsert = [];
 
       if (statusChanged) {
@@ -77,8 +89,7 @@ export async function PUT(
       console.error('Failed to log lead activities:', err);
     }
 
-
-    return NextResponse.json(updatedLead);
+    return NextResponse.json({ ...updatedLead, lead: updatedLead });
   } catch (error: any) {
     console.error('Failed to update lead:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

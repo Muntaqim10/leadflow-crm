@@ -279,13 +279,19 @@ export default function App() {
   const [formAccessories, setFormAccessories] = useState<Array<{ name: string; price: string }>>([]);
   const [formEventDetails, setFormEventDetails] = useState('');
   const [formRevenue, setFormRevenue] = useState('0');
-  const [formManager, setFormManager] = useState('1');
+  const [formManager, setFormManager] = useState('');
   const [formStatus, setFormStatus] = useState('new');
   const [formSegment, setFormSegment] = useState('leisure');
   const [formDocumentUrl, setFormDocumentUrl] = useState('');
   const [formDocumentName, setFormDocumentName] = useState('');
   const [formLostReason, setFormLostReason] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+
+  useEffect(() => {
+    if (users.length > 0 && (!formManager || !users.some((u) => u.id === formManager))) {
+      setFormManager(currentUserObj?.id || users[0]?.id || '');
+    }
+  }, [users, currentUserObj, formManager]);
 
   // Proposal Modal State
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
@@ -644,6 +650,8 @@ export default function App() {
     const isCreating = !selectedLead || !isEditing;
     const finalStatus = isCreating ? 'new' : formStatus;
 
+    const validManager = users.find((u) => u.id === formManager)?.id || currentUserObj?.id || users[0]?.id || null;
+
     const leadPayload = {
       name_company: combinedName || 'Unnamed Lead',
       email: formEmail,
@@ -659,7 +667,7 @@ export default function App() {
         eventDetails: formEventDetails
       }),
       revenue_potential: parseFloat(formRevenue) || 0,
-      assigned_sales_manager_id: formManager,
+      assigned_sales_manager_id: validManager,
       status: finalStatus,
       market_segment: formSegment,
       document_url: formDocumentUrl,
@@ -674,10 +682,11 @@ export default function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(leadPayload)
         });
-        if (!res.ok) throw new Error('Failed to update lead');
-        const data = await res.json();
-        setLeads(leads.map((l) => (l.id === selectedLead.id ? data.lead : l)));
-        setSelectedLead(data.lead);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Failed to update lead');
+        const savedLead = data.lead || data;
+        setLeads(leads.map((l) => (l.id === selectedLead.id ? savedLead : l)));
+        setSelectedLead(savedLead);
         setIsEditing(false);
         setSuccessMsg('Lead updated successfully!');
       } else {
@@ -686,9 +695,10 @@ export default function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify(leadPayload)
         });
-        if (!res.ok) throw new Error('Failed to create lead');
-        const data = await res.json();
-        setLeads([...leads, data.lead]);
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) throw new Error(data.error || 'Failed to create lead');
+        const newLead = data.lead || data;
+        setLeads([...leads, newLead]);
         setIsNewLeadModalOpen(false);
         resetLeadForm();
         setSuccessMsg('New lead created successfully!');
@@ -752,12 +762,14 @@ export default function App() {
     setAppointmentSaving(true);
 
     try {
+      const targetAgentId = selectedLead.assigned_sales_manager_id || currentUserObj?.id || users[0]?.id || null;
+
       const res = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           lead_id: selectedLead.id,
-          agent_id: selectedLead.assigned_sales_manager_id || '1',
+          agent_id: targetAgentId,
           appointment_date: appointmentDate,
           appointment_time: appointmentTime,
           type: appointmentType
@@ -782,6 +794,8 @@ export default function App() {
     setApptSaving(true);
 
     try {
+      const targetAgentId = quickBookAgentId || currentUserObj?.id || users[0]?.id || null;
+
       const leadRes = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -790,7 +804,7 @@ export default function App() {
           lead_source: 'sales_call',
           check_in_date: quickBookDate,
           check_out_date: quickBookDate,
-          assigned_sales_manager_id: quickBookAgentId,
+          assigned_sales_manager_id: targetAgentId,
           status: 'new',
           market_segment: 'corporate'
         })
@@ -798,13 +812,14 @@ export default function App() {
 
       if (!leadRes.ok) throw new Error('Failed to create contact for appointment');
       const leadData = await leadRes.json();
+      const newLeadId = leadData.lead?.id || leadData.id;
 
       const res = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lead_id: leadData.lead.id,
-          agent_id: quickBookAgentId,
+          lead_id: newLeadId,
+          agent_id: targetAgentId,
           appointment_date: quickBookDate,
           appointment_time: quickBookTime,
           type: quickBookType
@@ -1130,7 +1145,7 @@ export default function App() {
     setFormGuestRooms([]);
     setFormEventDetails('');
     setFormRevenue('0');
-    setFormManager('1');
+    setFormManager(currentUserObj?.id || users[0]?.id || '');
     setFormStatus('new');
     setFormSegment('leisure');
     setFormDocumentUrl('');

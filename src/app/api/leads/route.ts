@@ -16,13 +16,25 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    
+
     // Validate required fields
     const requiredFields = ['name_company', 'email', 'lead_source', 'check_in_date', 'check_out_date', 'status'];
     for (const field of requiredFields) {
       if (!body[field]) {
         return NextResponse.json({ error: `Missing required field: ${field}` }, { status: 400 });
       }
+    }
+
+    // Validate assigned manager ID against existing users to prevent foreign key constraint violations
+    let assignedManagerId = body.assigned_sales_manager_id;
+    try {
+      const users = await getRows('users');
+      const validUser = users.find((u) => u.id === assignedManagerId);
+      if (!validUser) {
+        assignedManagerId = users[0]?.id || null;
+      }
+    } catch (e) {
+      // If fetching users fails, keep assignedManagerId or null
     }
 
     const newLead = await addRow('leads', {
@@ -34,14 +46,14 @@ export async function POST(request: Request) {
       check_out_date: body.check_out_date,
       rooms_or_event_details: body.rooms_or_event_details || '',
       revenue_potential: body.revenue_potential ? parseFloat(body.revenue_potential).toString() : '0',
-      assigned_sales_manager_id: body.assigned_sales_manager_id || '1', // default to first manager
-      status: body.status,
+      assigned_sales_manager_id: assignedManagerId,
+      status: body.status || 'new',
       market_segment: body.market_segment || 'leisure',
       document_url: body.document_url || null,
       document_name: body.document_name || null,
     });
 
-    return NextResponse.json(newLead, { status: 201 });
+    return NextResponse.json({ ...newLead, lead: newLead }, { status: 201 });
   } catch (error: any) {
     console.error('Failed to create lead:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

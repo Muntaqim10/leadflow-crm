@@ -2,7 +2,7 @@ import { createClient } from '@supabase/supabase-js';
 
 import { cookies } from 'next/headers';
 
-export async function getSupabaseClient(useServiceRole = false): Promise<any> {
+export async function getSupabaseClient(useServiceRole = true): Promise<any> {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const activeKey = useServiceRole && process.env.SUPABASE_SERVICE_ROLE_KEY
     ? process.env.SUPABASE_SERVICE_ROLE_KEY

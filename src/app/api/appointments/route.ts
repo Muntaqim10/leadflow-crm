@@ -40,6 +40,12 @@ export async function POST(request: Request) {
 
     let finalLeadId = lead_id;
 
+    let finalAgentId = agent_id;
+    if (finalAgentId) {
+      const { data: validUser } = await supabase.from('users').select('id').eq('id', finalAgentId).maybeSingle();
+      if (!validUser) finalAgentId = null;
+    }
+
     // If client_name is provided instead of lead_id, auto-create a lead
     if (!finalLeadId && client_name) {
       const { data: newLead, error: leadError } = await supabase
@@ -48,7 +54,7 @@ export async function POST(request: Request) {
           name_company: client_name,
           status: 'new',
           lead_source: 'direct',
-          assigned_sales_manager_id: agent_id || null
+          assigned_sales_manager_id: finalAgentId
         }])
         .select('id')
         .single();
@@ -60,7 +66,7 @@ export async function POST(request: Request) {
     const { data, error } = await supabase
       .from('appointments')
       .insert([
-        { lead_id: finalLeadId, agent_id: agent_id || null, type, appointment_date, appointment_time }
+        { lead_id: finalLeadId, agent_id: finalAgentId, type, appointment_date, appointment_time }
       ])
       .select(`
         *,
