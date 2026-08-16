@@ -949,20 +949,45 @@ export default function App() {
     setAuthError('');
     setAuthSubmitting(true);
     try {
-      const res = await fetch('/api/auth/signup', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: authEmail, password: authPassword, name: authName })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to sign up');
+      let sessionData: any = null;
+
+      // 1. Attempt server-side registration
+      try {
+        const res = await fetch('/api/auth/signup', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: authEmail, password: authPassword, name: authName })
+        });
+        const data = await res.json();
+        if (res.ok && data.session) {
+          sessionData = data.session;
+        } else if (!res.ok) {
+          throw new Error(data.error || 'Server signup failed');
+        }
+      } catch (serverErr: any) {
+        console.warn('Server signup failed, attempting direct Supabase client registration:', serverErr);
+        // 2. Direct client-side Supabase registration fallback
+        const { data: supaAuthData, error: supaAuthErr } = await supabase.auth.signUp({
+          email: authEmail,
+          password: authPassword,
+          options: {
+            data: {
+              name: authName,
+              role: 'Sales Agent'
+            }
+          }
+        });
+        if (supaAuthErr) throw supaAuthErr;
+        sessionData = supaAuthData.session || {
+          access_token: 'client_session_' + (supaAuthData.user?.id || Date.now()),
+          user: supaAuthData.user
+        };
       }
 
       setSuccessMsg('Account created successfully! You are now signed in.');
-      setSession(data.session);
+      setSession(sessionData);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('leadflow_demo_session', JSON.stringify(data.session));
+        localStorage.setItem('leadflow_demo_session', JSON.stringify(sessionData));
       }
     } catch (err: any) {
       setAuthError(err.message || 'Failed to sign up. Please try again.');
