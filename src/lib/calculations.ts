@@ -90,6 +90,35 @@ export const parseRoomDetails = (jsonStr: string | null | undefined): ParsedRoom
   }
 };
 
+// Format room details string for cards and modals
+export const formatRoomDetailsDisplay = (detailsJson: string | null | undefined): string => {
+  const parsed = parseRoomDetails(detailsJson);
+  const parts: string[] = [];
+  if (parsed.eventRoom) {
+    parts.push(`Event: ${parsed.eventRoom} ($${parsed.eventRoomRate || '500'})`);
+  }
+  if (parsed.guestRooms && parsed.guestRooms.length > 0) {
+    const roomSummaries = parsed.guestRooms
+      .filter((r: any) => r.type && r.count)
+      .map((r: any) => `${r.count}x ${r.type} ($${r.rate}/nt)`);
+    if (roomSummaries.length > 0) {
+      parts.push(`Rooms: ${roomSummaries.join(', ')}`);
+    }
+  }
+  if (parsed.accessories && parsed.accessories.length > 0) {
+    const accSummaries = parsed.accessories
+      .filter((a: any) => a.name)
+      .map((a: any) => `${a.name} ($${a.price})`);
+    if (accSummaries.length > 0) {
+      parts.push(`Add-ons: ${accSummaries.join(', ')}`);
+    }
+  }
+  if (parsed.eventDetails) {
+    parts.push(`Notes: ${parsed.eventDetails}`);
+  }
+  return parts.length > 0 ? parts.join(' | ') : 'Standard Booking';
+};
+
 // Booking Type Classification
 export const getLeadBookingType = (roomsJson: string | null | undefined): BookingTypeInfo => {
   const parsed = parseRoomDetails(roomsJson);
@@ -97,13 +126,37 @@ export const getLeadBookingType = (roomsJson: string | null | undefined): Bookin
   const hasRooms = parsed.guestRooms && parsed.guestRooms.length > 0;
 
   if (hasEvent && hasRooms) {
-    return { label: 'Event & Rooms', icon: '🏛️🏨', badgeClass: 'bg-purple-50 text-purple-700 border-purple-200' };
+    return {
+      type: 'both',
+      shortLabel: 'Both',
+      label: 'Event & Rooms',
+      icon: '🏛️🏨',
+      badgeClass: 'bg-purple-50 text-purple-700 border-purple-200'
+    };
   }
   if (hasEvent) {
-    return { label: 'Event Only', icon: '🏛️', badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200' };
+    return {
+      type: 'event',
+      shortLabel: 'Event',
+      label: 'Event Only',
+      icon: '🏛️',
+      badgeClass: 'bg-indigo-50 text-indigo-700 border-indigo-200'
+    };
   }
   if (hasRooms) {
-    return { label: 'Room Block', icon: '🏨', badgeClass: 'bg-sky-50 text-sky-700 border-sky-200' };
+    return {
+      type: 'stay_block',
+      shortLabel: 'Stay',
+      label: 'Room Block',
+      icon: '🏨',
+      badgeClass: 'bg-sky-50 text-sky-700 border-sky-200'
+    };
   }
-  return { label: 'General Inquiry', icon: '📋', badgeClass: 'bg-slate-50 text-slate-700 border-slate-200' };
+  return {
+    type: 'general',
+    shortLabel: 'General',
+    label: 'General Inquiry',
+    icon: '📋',
+    badgeClass: 'bg-slate-50 text-slate-700 border-slate-200'
+  };
 };

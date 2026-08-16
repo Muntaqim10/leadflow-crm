@@ -115,6 +115,8 @@ export interface ParsedRoomDetails {
 }
 
 export interface BookingTypeInfo {
+  type?: string;
+  shortLabel?: string;
   label: string;
   icon: string;
   badgeClass: string;
