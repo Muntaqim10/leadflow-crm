@@ -322,17 +322,30 @@ const calculateLeadScore = (lead: Lead) => {
   return Math.max(5, Math.min(95, score));
 };
 
-const getDefaultStartDate = () => {
+const getPastWeekStartDate = () => {
   const today = new Date();
   // Rolling past 7 days (1 week ago)
   const pastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
   return pastWeek.toISOString().split('T')[0];
 };
 
-const getDefaultEndDate = () => {
+const getTodayDate = () => {
   const today = new Date();
   return today.toISOString().split('T')[0];
 };
+
+const getCurrentMonthStartDate = () => {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+};
+
+const getCurrentMonthEndDate = () => {
+  const today = new Date();
+  return new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+};
+
+const getDefaultStartDate = () => getPastWeekStartDate();
+const getDefaultEndDate = () => getTodayDate();
 
 const formatDisplayDate = (dateStr: string) => {
   if (!dateStr) return '';
@@ -434,7 +447,32 @@ export default function App() {
 
   const { data: usersData } = useSWR(session ? '/api/users' : null, fetcher, { fallbackData: [] });
 
-  const users: User[] = Array.isArray(usersData) ? usersData : [];
+  // Authorization Helpers
+  const currentUserEmail = session?.user?.email || '';
+  const isMuntaqim = currentUserEmail.toLowerCase().includes('muntaqim') || currentUserEmail.toLowerCase() === 'muntaquime@gmail.com';
+  const isArzaan = currentUserEmail.toLowerCase() === 'arzaan@leadflow.com';
+  const defaultUserRole = isMuntaqim ? 'Front Desk Supervisor' : isArzaan ? 'General Manager' : session?.user?.user_metadata?.role || 'Sales Agent';
+  const defaultUserName = session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || (isMuntaqim ? 'Muntaqim Elahi' : 'User');
+
+  const users: User[] = Array.isArray(usersData) && usersData.length > 0
+    ? usersData
+    : (session?.user ? [{ id: session.user.id, name: defaultUserName, email: currentUserEmail, role: defaultUserRole }] : []);
+
+  const currentUserObj = users.find(u => u.email?.toLowerCase() === currentUserEmail.toLowerCase() || u.id === session?.user?.id);
+  const currentUserRole = currentUserObj?.role || defaultUserRole;
+  const currentUserName = currentUserObj?.name || defaultUserName;
+  const isGeneralManager = currentUserRole.toLowerCase().includes('general manager') || isArzaan;
+  const isFrontDeskSupervisor = currentUserRole.toLowerCase().includes('front desk supervisor') || currentUserRole.toLowerCase().includes('supervisor') || isMuntaqim;
+  
+  // Explicit restriction: Rokeya (Director of Sales) and Riham (Sales Manager) cannot delete leads
+  const isRokeya = currentUserEmail.toLowerCase().includes('rokeya') || currentUserName.toLowerCase().includes('rokeya') || currentUserRole.toLowerCase().includes('director');
+  const isRiham = currentUserEmail.toLowerCase().includes('riham') || currentUserName.toLowerCase().includes('riham') || (currentUserRole.toLowerCase().includes('manager') && !isGeneralManager);
+  const isSalesAgent = currentUserRole.toLowerCase().includes('agent');
+
+  const canDeleteLeads = (isGeneralManager || isFrontDeskSupervisor || isMuntaqim) && !isRokeya && !isRiham && !isSalesAgent;
+  const canManageUsers = isGeneralManager || isFrontDeskSupervisor || isMuntaqim;
+  const canManageHotelDetails = isGeneralManager || isFrontDeskSupervisor || isMuntaqim;
+
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
@@ -456,25 +494,6 @@ export default function App() {
   const [selectedDayLeads, setSelectedDayLeads] = useState<any[]>([]);
   const [isDayLeadsModalOpen, setIsDayLeadsModalOpen] = useState(false);
   const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'global' | 'templates' | 'users' | 'hotel'>('profile');
-
-  // Authorization Helpers
-  const currentUserEmail = session?.user?.email || '';
-  const currentUserObj = users.find(u => u.email?.toLowerCase() === currentUserEmail.toLowerCase() || u.id === session?.user?.id);
-  const isMuntaqim = currentUserEmail.toLowerCase().includes('muntaqim') || currentUserEmail.toLowerCase() === 'muntaquime@gmail.com';
-  const isArzaan = currentUserEmail.toLowerCase() === 'arzaan@leadflow.com';
-  const currentUserRole = currentUserObj?.role || (isMuntaqim ? 'Front Desk Supervisor' : isArzaan ? 'General Manager' : session?.user?.user_metadata?.role || 'Sales Agent');
-  const currentUserName = currentUserObj?.name || session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || (isMuntaqim ? 'Muntaqim Elahi' : 'User');
-  const isGeneralManager = currentUserRole.toLowerCase().includes('general manager') || isArzaan;
-  const isFrontDeskSupervisor = currentUserRole.toLowerCase().includes('front desk supervisor') || currentUserRole.toLowerCase().includes('supervisor') || isMuntaqim;
-  
-  // Explicit restriction: Rokeya (Director of Sales) and Riham (Sales Manager) cannot delete leads
-  const isRokeya = currentUserEmail.toLowerCase().includes('rokeya') || currentUserName.toLowerCase().includes('rokeya') || currentUserRole.toLowerCase().includes('director');
-  const isRiham = currentUserEmail.toLowerCase().includes('riham') || currentUserName.toLowerCase().includes('riham') || (currentUserRole.toLowerCase().includes('manager') && !isGeneralManager);
-  const isSalesAgent = currentUserRole.toLowerCase().includes('agent');
-
-  const canDeleteLeads = (isGeneralManager || isFrontDeskSupervisor || isMuntaqim) && !isRokeya && !isRiham && !isSalesAgent;
-  const canManageUsers = isGeneralManager || isFrontDeskSupervisor || isMuntaqim;
-  const canManageHotelDetails = isGeneralManager || isFrontDeskSupervisor || isMuntaqim;
 
   // Settings State
   const [profileName, setProfileName] = useState('');
@@ -2638,10 +2657,11 @@ export default function App() {
                   const newType = e.target.value as 'created_at' | 'check_in';
                   setDateFilterType(newType);
                   if (newType === 'created_at') {
-                    if (endDate > todayStr) setEndDate(todayStr);
-                    if (startDate > todayStr) setStartDate(getDefaultStartDate());
+                    setStartDate(getPastWeekStartDate());
+                    setEndDate(getTodayDate());
                   } else {
-                    if (endDate === todayStr) setEndDate(getDefaultEndDate());
+                    setStartDate(getCurrentMonthStartDate());
+                    setEndDate(getCurrentMonthEndDate());
                   }
                 }}
                 className="bg-transparent font-bold text-[10px] uppercase text-slate-500 px-2 outline-none border-r border-slate-200 cursor-pointer"

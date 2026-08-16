@@ -17,56 +17,62 @@ export async function GET() {
     const dbUsers = await getRows('users');
     const leads = await getRows('leads');
 
-    // If we have auth users from Supabase Auth, ONLY display actual accounts registered in Supabase
-    if (authUsers.length > 0) {
-      const realUsers = authUsers.map(authU => {
-        const dbU = dbUsers.find(d => d.id === authU.id || d.email?.toLowerCase() === authU.email?.toLowerCase());
-        const role = dbU?.role || authU.user_metadata?.role || 'Sales Agent';
-        const name = dbU?.name || authU.user_metadata?.name || authU.user_metadata?.full_name || authU.email?.split('@')[0] || 'User';
-        const userLeads = leads.filter(l => 
-          l.assigned_sales_manager_id === authU.id || 
-          l.user_id === authU.id || 
-          l.manager_id === authU.id || 
-          (dbU && (l.assigned_sales_manager_id === dbU.id || l.user_id === dbU.id || l.manager_id === dbU.id))
-        );
-        return {
-          id: authU.id,
-          email: authU.email || '',
-          name,
-          role,
-          leadsCount: userLeads.length,
-          lastSignIn: authU.last_sign_in_at || null,
-          confirmed: !!authU.email_confirmed_at,
-          created_at: authU.created_at || dbU?.created_at || new Date().toISOString(),
-          updated_at: dbU?.updated_at || authU.updated_at || new Date().toISOString()
-        };
+    // Merge auth users and db users
+    const allUserMap = new Map<string, any>();
+
+    // 1. Process Auth Users (active accounts with Supabase Auth credentials)
+    authUsers.forEach(authU => {
+      const dbU = dbUsers.find(d => d.id === authU.id || (d.email && d.email.toLowerCase() === authU.email?.toLowerCase()));
+      const role = dbU?.role || authU.user_metadata?.role || 'Sales Agent';
+      const name = dbU?.name || authU.user_metadata?.name || authU.user_metadata?.full_name || authU.email?.split('@')[0] || 'User';
+      const userLeads = leads.filter(l => 
+        l.assigned_sales_manager_id === authU.id || 
+        l.user_id === authU.id || 
+        l.manager_id === authU.id || 
+        (dbU && (l.assigned_sales_manager_id === dbU.id || l.user_id === dbU.id || l.manager_id === dbU.id))
+      );
+
+      allUserMap.set(authU.id, {
+        id: authU.id,
+        email: authU.email || '',
+        name,
+        role,
+        hasAuthAccount: true,
+        leadsCount: userLeads.length,
+        lastSignIn: authU.last_sign_in_at || null,
+        confirmed: !!authU.email_confirmed_at,
+        created_at: authU.created_at || dbU?.created_at || new Date().toISOString(),
+        updated_at: dbU?.updated_at || authU.updated_at || new Date().toISOString()
       });
+    });
 
-      return NextResponse.json(realUsers);
-    }
-
-    // Fallback: only return users with a valid UUID and authentic non-mock email
-    const filteredDbUsers = dbUsers
-      .filter(u => u.email && u.email.includes('@') && !u.email.endsWith('@leadflow.com'))
-      .map(u => {
+    // 2. Process database users that might not be in auth list yet
+    dbUsers.forEach(dbU => {
+      const exists = Array.from(allUserMap.values()).some(
+        u => u.id === dbU.id || (u.email && dbU.email && u.email.toLowerCase() === dbU.email.toLowerCase())
+      );
+      if (!exists) {
         const userLeads = leads.filter(l => 
-          l.assigned_sales_manager_id === u.id || 
-          l.user_id === u.id || 
-          l.manager_id === u.id
+          l.assigned_sales_manager_id === dbU.id || 
+          l.user_id === dbU.id || 
+          l.manager_id === dbU.id
         );
-        return {
-          id: u.id,
-          email: u.email,
-          name: u.name,
-          role: u.role || 'Sales Agent',
+        allUserMap.set(dbU.id, {
+          id: dbU.id,
+          email: dbU.email || '',
+          name: dbU.name,
+          role: dbU.role || 'Sales Agent',
+          hasAuthAccount: false,
           leadsCount: userLeads.length,
-          confirmed: true,
-          created_at: u.created_at,
-          updated_at: u.updated_at
-        };
-      });
+          confirmed: false,
+          created_at: dbU.created_at || new Date().toISOString(),
+          updated_at: dbU.updated_at || new Date().toISOString()
+        });
+      }
+    });
 
-    return NextResponse.json(filteredDbUsers);
+    const userList = Array.from(allUserMap.values());
+    return NextResponse.json(userList);
   } catch (error: any) {
     console.error('Failed to fetch users:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
