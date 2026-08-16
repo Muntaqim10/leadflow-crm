@@ -15,6 +15,7 @@ export async function GET() {
     }
 
     const dbUsers = await getRows('users');
+    const leads = await getRows('leads');
 
     // If we have auth users from Supabase Auth, ONLY display actual accounts registered in Supabase
     if (authUsers.length > 0) {
@@ -22,11 +23,15 @@ export async function GET() {
         const dbU = dbUsers.find(d => d.id === authU.id || d.email?.toLowerCase() === authU.email?.toLowerCase());
         const role = dbU?.role || authU.user_metadata?.role || 'Sales Agent';
         const name = dbU?.name || authU.user_metadata?.name || authU.user_metadata?.full_name || authU.email?.split('@')[0] || 'User';
+        const userLeads = leads.filter(l => l.user_id === authU.id || l.manager_id === authU.id || (dbU && (l.user_id === dbU.id || l.manager_id === dbU.id)));
         return {
           id: authU.id,
           email: authU.email || '',
           name,
           role,
+          leadsCount: userLeads.length,
+          lastSignIn: authU.last_sign_in_at || null,
+          confirmed: !!authU.email_confirmed_at,
           created_at: authU.created_at || dbU?.created_at || new Date().toISOString(),
           updated_at: dbU?.updated_at || authU.updated_at || new Date().toISOString()
         };
@@ -38,14 +43,19 @@ export async function GET() {
     // Fallback: only return users with a valid UUID and authentic non-mock email
     const filteredDbUsers = dbUsers
       .filter(u => u.email && u.email.includes('@') && !u.email.endsWith('@leadflow.com'))
-      .map(u => ({
-        id: u.id,
-        email: u.email,
-        name: u.name,
-        role: u.role || 'Sales Agent',
-        created_at: u.created_at,
-        updated_at: u.updated_at
-      }));
+      .map(u => {
+        const userLeads = leads.filter(l => l.user_id === u.id || l.manager_id === u.id);
+        return {
+          id: u.id,
+          email: u.email,
+          name: u.name,
+          role: u.role || 'Sales Agent',
+          leadsCount: userLeads.length,
+          confirmed: true,
+          created_at: u.created_at,
+          updated_at: u.updated_at
+        };
+      });
 
     return NextResponse.json(filteredDbUsers);
   } catch (error: any) {
@@ -66,17 +76,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
     }
 
-    const userPassword = password || 'Welcome' + Math.floor(1000 + Math.random() * 9000) + '!';
+    const userPassword = password || 'Leadflow' + Math.floor(1000 + Math.random() * 9000) + '!';
     const userRole = role || 'Sales Agent';
 
     // 1. Create in Supabase Auth
     let userId: string | null = null;
     if (supabase.auth?.admin) {
       const { data: createData, error: createError } = await supabase.auth.admin.createUser({
-        email,
+        email: email.trim(),
         password: userPassword,
         email_confirm: true,
-        user_metadata: { name, role: userRole }
+        user_metadata: { name: name.trim(), role: userRole }
       });
 
       if (createError) {
@@ -92,7 +102,7 @@ export async function POST(request: Request) {
     // 2. Save in public.users
     await supabase.from('users').upsert({
       id: userId,
-      name,
+      name: name.trim(),
       role: userRole,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString()
@@ -100,7 +110,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      user: { id: userId, email, name, role: userRole, temporaryPassword: userPassword }
+      user: { id: userId, email: email.trim(), name: name.trim(), role: userRole, temporaryPassword: userPassword }
     });
   } catch (error: any) {
     console.error('Failed to create user:', error);
@@ -112,6 +122,7 @@ export async function DELETE(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
+    const reassignTo = searchParams.get('reassignTo');
     if (!id) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
@@ -121,10 +132,22 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
     }
 
-    // Delete from public.users
+    // 1. Reassign leads/appointments/tasks if requested
+    if (reassignTo && reassignTo !== id) {
+      try {
+        await supabase.from('leads').update({ user_id: reassignTo }).eq('user_id', id);
+        await supabase.from('leads').update({ manager_id: reassignTo }).eq('manager_id', id);
+        await supabase.from('appointments').update({ host_agent_id: reassignTo }).eq('host_agent_id', id);
+        await supabase.from('lead_tasks').update({ assigned_to: reassignTo }).eq('assigned_to', id);
+      } catch (reassignErr) {
+        console.warn('Failed to reassign user records:', reassignErr);
+      }
+    }
+
+    // 2. Delete from public.users
     await supabase.from('users').delete().eq('id', id);
 
-    // Delete from Auth
+    // 3. Delete from Supabase Auth
     if (supabase.auth?.admin) {
       try {
         await supabase.auth.admin.deleteUser(id);

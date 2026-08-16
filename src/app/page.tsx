@@ -60,6 +60,9 @@ interface User {
   name: string;
   role: string;
   email?: string;
+  leadsCount?: number;
+  confirmed?: boolean;
+  lastSignIn?: string | null;
 }
 
 interface FollowUp {
@@ -494,6 +497,14 @@ export default function App() {
   const [editUserName, setEditUserName] = useState('');
   const [editUserRole, setEditUserRole] = useState('');
 
+  // Offboarding & Deletion State
+  const [isDeleteUserModalOpen, setIsDeleteUserModalOpen] = useState(false);
+  const [userToDelete, setUserToDelete] = useState<User | null>(null);
+  const [deleteReassignId, setDeleteReassignId] = useState('');
+  const [deleteConfirmChecked, setDeleteConfirmChecked] = useState(false);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
+  const [showRoleGuide, setShowRoleGuide] = useState(false);
+
   // Settings Handlers
   const handleSaveProfile = () => setSuccessMsg('Profile updated successfully!');
   const handleSaveGlobalVars = () => setSuccessMsg('Global variables updated successfully!');
@@ -526,7 +537,7 @@ export default function App() {
       setNewUserEmail('');
       setNewUserPassword('');
       setNewUserRole('Sales Agent');
-      setSuccessMsg(`User created in Supabase! Temporary password: ${data.user?.temporaryPassword || 'Configured'}`);
+      setSuccessMsg(`User account created in Supabase! Temporary password: ${data.user?.temporaryPassword || 'Configured'}`);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to add user');
     } finally {
@@ -534,22 +545,42 @@ export default function App() {
     }
   };
 
-  const handleDeleteUser = async (user: User) => {
+  const handlePromptDeleteUser = (user: User) => {
     if (user.email?.toLowerCase() === currentUserEmail.toLowerCase() || user.id === session?.user?.id) {
-      setErrorMsg('You cannot delete your own active account.');
+      setErrorMsg('You cannot delete your own active administrator account.');
       return;
     }
-    if (!confirm(`Are you sure you want to remove ${user.name} (${user.email || user.role}) from the workspace?`)) return;
+    setUserToDelete(user);
+    const fallbackUser = users.find(u => u.id !== user.id);
+    setDeleteReassignId(fallbackUser ? fallbackUser.id : '');
+    setDeleteConfirmChecked(false);
+    setIsDeleteUserModalOpen(true);
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    if (!deleteConfirmChecked) {
+      setErrorMsg('Please check the confirmation box to proceed.');
+      return;
+    }
+    setIsDeletingUser(true);
     try {
-      const res = await fetch(`/api/users?id=${user.id}`, { method: 'DELETE' });
+      const url = `/api/users?id=${userToDelete.id}${deleteReassignId ? `&reassignTo=${deleteReassignId}` : ''}`;
+      const res = await fetch(url, { method: 'DELETE' });
       if (!res.ok) {
         const data = await res.json();
         throw new Error(data.error || 'Failed to remove user');
       }
       mutate('/api/users');
-      setSuccessMsg(`User ${user.name} removed successfully.`);
+      mutate('/api/leads');
+      setIsDeleteUserModalOpen(false);
+      const deletedName = userToDelete.name;
+      setUserToDelete(null);
+      setSuccessMsg(`Offboarded ${deletedName}. Account deleted from Supabase Auth and leads transferred.`);
     } catch (err: any) {
       setErrorMsg(err.message || 'Failed to delete user');
+    } finally {
+      setIsDeletingUser(false);
     }
   };
 
@@ -4870,54 +4901,198 @@ export default function App() {
 
                 {activeSettingsTab === 'users' && canManageUsers && (
                   <div className="max-w-4xl space-y-6">
-                    <div className="flex items-center justify-between">
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                       <div>
-                        <h4 className="text-lg font-medium text-slate-900">User Management</h4>
-                        <p className="text-sm text-slate-500">Manage verified team members and their permission roles.</p>
+                        <div className="flex items-center gap-3">
+                          <h4 className="text-lg font-bold text-slate-900">Team Directory & Access Control</h4>
+                          <span className="bg-slate-100 text-slate-600 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-slate-200">
+                            {users.length} {users.length === 1 ? 'Member' : 'Members'}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-0.5">Manage verified team member accounts, role-based access permissions, and offboarding.</p>
                       </div>
-                      <button onClick={() => setIsAddUserModalOpen(true)} className="px-3.5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 shadow-sm transition-colors flex items-center gap-1.5">
-                        <span>+</span> Add User
-                      </button>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setShowRoleGuide(!showRoleGuide)}
+                          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold border border-slate-200 transition-colors flex items-center gap-1.5"
+                        >
+                          <span>{showRoleGuide ? '✕ Hide' : '🛡️ View'} Permissions Matrix</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setIsAddUserModalOpen(true)}
+                          className="px-3.5 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm transition-colors flex items-center gap-1.5"
+                        >
+                          <span>+</span> Add Team Member
+                        </button>
+                      </div>
                     </div>
+
+                    {/* Role Permissions Matrix Card */}
+                    {showRoleGuide && (
+                      <div className="bg-slate-900 text-white p-5 rounded-xl border border-slate-800 shadow-lg space-y-4 animate-in fade-in duration-200">
+                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                          <h5 className="font-bold text-sm text-slate-100 flex items-center gap-2">
+                            <span>🛡️</span> Leadflow Role Permissions Matrix
+                          </h5>
+                          <span className="text-[11px] text-slate-400">Roles can only be assigned by General Manager or Front Desk Supervisor</span>
+                        </div>
+                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
+                          <div className="bg-slate-800/70 p-3 rounded-lg border border-purple-500/30">
+                            <div className="font-bold text-purple-300 flex items-center gap-1.5 mb-1.5">
+                              <span>👑</span> General Manager
+                            </div>
+                            <ul className="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
+                              <li>Full workspace control & team role assignment</li>
+                              <li>Global financial rates, tax & gratuity configuration</li>
+                              <li>High-level analytics & export capabilities</li>
+                              <li>Delete & offboard team accounts</li>
+                            </ul>
+                          </div>
+                          <div className="bg-slate-800/70 p-3 rounded-lg border border-amber-500/30">
+                            <div className="font-bold text-amber-300 flex items-center gap-1.5 mb-1.5">
+                              <span>🛡️</span> Front Desk Supervisor
+                            </div>
+                            <ul className="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
+                              <li>Triage incoming inquiries & lead routing</li>
+                              <li>Assign sales agents & manage appointments</li>
+                              <li>Team directory & member role management</li>
+                              <li>Workspace profile configuration</li>
+                            </ul>
+                          </div>
+                          <div className="bg-slate-800/70 p-3 rounded-lg border border-blue-500/30">
+                            <div className="font-bold text-blue-300 flex items-center gap-1.5 mb-1.5">
+                              <span>📊</span> Director of Sales
+                            </div>
+                            <ul className="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
+                              <li>Complete pipeline & revenue oversight</li>
+                              <li>Approve custom rate blocks & agreements</li>
+                              <li>Sales conversion analytics</li>
+                            </ul>
+                          </div>
+                          <div className="bg-slate-800/70 p-3 rounded-lg border border-emerald-500/30">
+                            <div className="font-bold text-emerald-300 flex items-center gap-1.5 mb-1.5">
+                              <span>💼</span> Sales Manager
+                            </div>
+                            <ul className="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
+                              <li>Manage and negotiate active opportunities</li>
+                              <li>Generate AI contracts and site tours</li>
+                              <li>Assign follow-up tasks to sales agents</li>
+                            </ul>
+                          </div>
+                          <div className="bg-slate-800/70 p-3 rounded-lg border border-slate-600/50">
+                            <div className="font-bold text-slate-300 flex items-center gap-1.5 mb-1.5">
+                              <span>📝</span> Sales Agent
+                            </div>
+                            <ul className="text-slate-400 space-y-1 list-disc list-inside text-[11px]">
+                              <li>Execute lead follow-ups & log activity</li>
+                              <li>Update deal stages & client notes</li>
+                              <li>Standard assigned opportunities access</li>
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Team Members Table */}
                     <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs bg-white">
-                      <table className="w-full text-left text-sm">
-                        <thead className="bg-slate-50 border-b border-slate-200">
+                      <table className="w-full text-left text-xs">
+                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-semibold text-[10px] tracking-wider">
                           <tr>
-                            <th className="p-3.5 font-semibold text-slate-700">Name</th>
-                            <th className="p-3.5 font-semibold text-slate-700">Email</th>
-                            <th className="p-3.5 font-semibold text-slate-700">Role</th>
-                            <th className="p-3.5 font-semibold text-slate-700 text-right">Actions</th>
+                            <th className="py-3.5 px-4">Member Name</th>
+                            <th className="py-3.5 px-4">Email Address</th>
+                            <th className="py-3.5 px-4">Assigned Role</th>
+                            <th className="py-3.5 px-4">Workload</th>
+                            <th className="py-3.5 px-4 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
                           {users.length === 0 ? (
                             <tr>
-                              <td colSpan={4} className="p-8 text-center text-slate-400">
-                                No registered team members found. Click &quot;+ Add User&quot; above to invite members or have them sign up.
+                              <td colSpan={5} className="p-8 text-center text-slate-400">
+                                No registered team members found. Click &quot;+ Add Team Member&quot; above to provision accounts.
                               </td>
                             </tr>
                           ) : (
-                            users.map(u => (
-                              <tr key={u.id} className="hover:bg-slate-50 transition-colors">
-                                <td className="p-3.5 font-semibold text-slate-900">{u.name}</td>
-                                <td className="p-3.5 text-slate-600 font-mono text-xs">{u.email || '—'}</td>
-                                <td className="p-3.5">
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
-                                    {u.role}
-                                  </span>
-                                </td>
-                                <td className="p-3.5 text-right space-x-3">
-                                  <button onClick={() => handleEditUser(u)} className="text-blue-600 hover:text-blue-800 font-semibold text-xs transition-colors">
-                                    Edit Role
-                                  </button>
-                                  {u.email?.toLowerCase() !== currentUserEmail.toLowerCase() && u.id !== session?.user?.id && (
-                                    <button onClick={() => handleDeleteUser(u)} className="text-rose-600 hover:text-rose-800 font-semibold text-xs transition-colors">
-                                      Remove
-                                    </button>
-                                  )}
-                                </td>
-                              </tr>
-                            ))
+                            users.map(u => {
+                              const isCurrentUser = u.email?.toLowerCase() === currentUserEmail.toLowerCase() || u.id === session?.user?.id;
+                              let roleBadge = 'bg-slate-100 text-slate-700 border-slate-200';
+                              let roleIcon = '📝';
+                              if (u.role?.toLowerCase().includes('general manager')) {
+                                roleBadge = 'bg-purple-50 text-purple-700 border-purple-200';
+                                roleIcon = '👑';
+                              } else if (u.role?.toLowerCase().includes('front desk supervisor')) {
+                                roleBadge = 'bg-amber-50 text-amber-700 border-amber-200';
+                                roleIcon = '🛡️';
+                              } else if (u.role?.toLowerCase().includes('director')) {
+                                roleBadge = 'bg-blue-50 text-blue-700 border-blue-200';
+                                roleIcon = '📊';
+                              } else if (u.role?.toLowerCase().includes('manager')) {
+                                roleBadge = 'bg-emerald-50 text-emerald-700 border-emerald-200';
+                                roleIcon = '💼';
+                              }
+
+                              return (
+                                <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
+                                  <td className="py-3.5 px-4">
+                                    <div className="flex items-center gap-3">
+                                      <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
+                                        {u.name ? u.name.split(' ').map((n: string) => n[0]).join('') : 'U'}
+                                      </div>
+                                      <div>
+                                        <div className="font-bold text-slate-900 flex items-center gap-1.5">
+                                          <span>{u.name}</span>
+                                          {isCurrentUser && (
+                                            <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded font-semibold">
+                                              You
+                                            </span>
+                                          )}
+                                        </div>
+                                        <div className="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
+                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Verified Account
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td className="py-3.5 px-4 text-slate-600 font-mono text-xs">
+                                    {u.email || '—'}
+                                  </td>
+                                  <td className="py-3.5 px-4">
+                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${roleBadge}`}>
+                                      <span>{roleIcon}</span>
+                                      <span>{u.role}</span>
+                                    </span>
+                                  </td>
+                                  <td className="py-3.5 px-4">
+                                    <span className="inline-flex items-center gap-1 text-slate-700 font-medium bg-slate-100 px-2 py-0.5 rounded text-[11px] border border-slate-200">
+                                      <span>🎯</span> {u.leadsCount || 0} Deals
+                                    </span>
+                                  </td>
+                                  <td className="py-3.5 px-4 text-right">
+                                    <div className="flex items-center justify-end gap-2">
+                                      <button
+                                        type="button"
+                                        onClick={() => handleEditUser(u)}
+                                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-semibold text-xs transition-colors border border-slate-200"
+                                      >
+                                        Edit Role
+                                      </button>
+                                      {!isCurrentUser && (
+                                        <button
+                                          type="button"
+                                          onClick={() => handlePromptDeleteUser(u)}
+                                          className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-md font-semibold text-xs transition-colors border border-rose-200 flex items-center gap-1"
+                                          title="Offboard and delete this user account"
+                                        >
+                                          <span>🗑️</span> Remove
+                                        </button>
+                                      )}
+                                    </div>
+                                  </td>
+                                </tr>
+                              );
+                            })
                           )}
                         </tbody>
                       </table>
@@ -4957,7 +5132,9 @@ export default function App() {
             <div className="fixed inset-0 z-[110] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
               <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 border border-slate-200">
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-                  <h3 className="text-base font-bold text-slate-900">Add Team Member</h3>
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span>👤</span> Add & Provision Team Member
+                  </h3>
                   <button onClick={() => setIsAddUserModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">
                     &times;
                   </button>
@@ -4988,15 +5165,15 @@ export default function App() {
                   <div>
                     <label className="block text-xs font-bold text-slate-700 mb-1">Assigned Role</label>
                     <select
-                      className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none font-medium"
                       value={newUserRole}
                       onChange={e => setNewUserRole(e.target.value)}
                     >
-                      <option value="Sales Agent">Sales Agent</option>
-                      <option value="Sales Manager">Sales Manager</option>
-                      <option value="Director of Sales">Director of Sales</option>
-                      <option value="Front Desk Supervisor">Front Desk Supervisor</option>
-                      <option value="General Manager">General Manager</option>
+                      <option value="Sales Agent">📝 Sales Agent (Standard follow-ups & pipeline access)</option>
+                      <option value="Sales Manager">💼 Sales Manager (Manage deals, proposals & tasks)</option>
+                      <option value="Director of Sales">📊 Director of Sales (Pipeline & revenue oversight)</option>
+                      <option value="Front Desk Supervisor">🛡️ Front Desk Supervisor (Triage, routing & team management)</option>
+                      <option value="General Manager">👑 General Manager (Full workspace executive control)</option>
                     </select>
                   </div>
                   <div>
@@ -5024,7 +5201,7 @@ export default function App() {
                       disabled={isSubmittingUser}
                       className="px-4 py-2 bg-blue-600 text-white font-semibold text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
                     >
-                      {isSubmittingUser ? 'Provisioning...' : 'Add & Create Account'}
+                      {isSubmittingUser ? 'Provisioning in Supabase...' : 'Add & Create Account'}
                     </button>
                   </div>
                 </form>
@@ -5034,22 +5211,142 @@ export default function App() {
 
           {/* Edit User Modal */}
           {isEditUserModalOpen && (
-            <div className="fixed inset-0 z-[110] bg-slate-900/50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-                <h3 className="text-lg font-bold text-slate-900 mb-4">Edit User</h3>
+            <div className="fixed inset-0 z-[110] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 border border-slate-200">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
+                    <span>✏️</span> Edit Team Member & Role
+                  </h3>
+                  <button onClick={() => setIsEditUserModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">
+                    &times;
+                  </button>
+                </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
-                    <input type="text" className="w-full border border-slate-300 rounded-md p-2 text-sm" value={editUserName} onChange={e => setEditUserName(e.target.value)} />
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
+                      value={editUserName}
+                      onChange={e => setEditUserName(e.target.value)}
+                    />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
-                    <input type="text" list="roles-list" className="w-full border border-slate-300 rounded-md p-2 text-sm" value={editUserRole} onChange={e => setEditUserRole(e.target.value)} placeholder="e.g. Sales Manager" />
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Assigned Role</label>
+                    <select
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none font-medium"
+                      value={editUserRole}
+                      onChange={e => setEditUserRole(e.target.value)}
+                    >
+                      <option value="Sales Agent">📝 Sales Agent (Standard follow-ups & pipeline access)</option>
+                      <option value="Sales Manager">💼 Sales Manager (Manage deals, proposals & tasks)</option>
+                      <option value="Director of Sales">📊 Director of Sales (Pipeline & revenue oversight)</option>
+                      <option value="Front Desk Supervisor">🛡️ Front Desk Supervisor (Triage, routing & team management)</option>
+                      <option value="General Manager">👑 General Manager (Full workspace executive control)</option>
+                    </select>
                   </div>
-                  <div className="flex gap-3 justify-end mt-6">
-                    <button onClick={() => setIsEditUserModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-md">Cancel</button>
-                    <button onClick={handleSaveEditUser} className="px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700">Save Changes</button>
+                  <div className="flex gap-3 justify-end mt-6 pt-3 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setIsEditUserModalOpen(false)}
+                      className="px-4 py-2 text-slate-600 font-semibold text-xs hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      onClick={handleSaveEditUser}
+                      className="px-4 py-2 bg-blue-600 text-white font-semibold text-xs rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                    >
+                      Save Role Changes
+                    </button>
                   </div>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Offboarding & Delete User Modal with Safe Lead Reassignment */}
+          {isDeleteUserModalOpen && userToDelete && (
+            <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 border border-slate-200 space-y-4">
+                <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+                  <div className="flex items-center gap-2.5 text-rose-600">
+                    <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-base shrink-0">
+                      ⚠️
+                    </div>
+                    <h3 className="text-base font-bold text-slate-900">Offboard & Remove Team Member</h3>
+                  </div>
+                  <button onClick={() => setIsDeleteUserModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">
+                    &times;
+                  </button>
+                </div>
+
+                <div className="bg-rose-50 border border-rose-200 rounded-lg p-3.5 text-xs text-rose-800 space-y-1">
+                  <p className="font-bold">You are about to permanently remove this user account:</p>
+                  <p className="text-slate-700">
+                    <strong>{userToDelete.name}</strong> ({userToDelete.email || userToDelete.role})
+                  </p>
+                  <p className="text-slate-600 text-[11px]">
+                    This will delete their login credentials from Supabase Auth and revoke all platform access.
+                  </p>
+                </div>
+
+                {/* Lead Reassignment Selector */}
+                <div className="space-y-2 pt-2">
+                  <label className="block text-xs font-bold text-slate-800">
+                    Transfer Open Leads & Tasks ({userToDelete.leadsCount || 0} Deals)
+                  </label>
+                  <p className="text-[11px] text-slate-500">
+                    Select a team member to inherit all active leads, upcoming appointments, and follow-up tasks currently assigned to {userToDelete.name}.
+                  </p>
+                  <select
+                    value={deleteReassignId}
+                    onChange={(e) => setDeleteReassignId(e.target.value)}
+                    className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none font-medium bg-slate-50"
+                  >
+                    <option value="">-- Do Not Reassign (Leave unassigned) --</option>
+                    {users
+                      .filter(u => u.id !== userToDelete.id)
+                      .map(u => (
+                        <option key={u.id} value={u.id}>
+                          {u.name} ({u.role}) — {u.email}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* Confirmation Checkbox */}
+                <div className="pt-2">
+                  <label className="flex items-start gap-2 text-xs text-slate-700 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={deleteConfirmChecked}
+                      onChange={(e) => setDeleteConfirmChecked(e.target.checked)}
+                      className="mt-0.5 rounded text-rose-600 focus:ring-rose-500"
+                    />
+                    <span>
+                      I confirm that I want to permanently delete this user account and execute the pipeline transfer.
+                    </span>
+                  </label>
+                </div>
+
+                <div className="flex gap-3 justify-end pt-4 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setIsDeleteUserModalOpen(false)}
+                    className="px-4 py-2 text-slate-600 font-semibold text-xs hover:bg-slate-100 rounded-lg transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={!deleteConfirmChecked || isDeletingUser}
+                    onClick={handleConfirmDeleteUser}
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-lg disabled:opacity-50 transition-colors shadow-sm flex items-center gap-1.5"
+                  >
+                    {isDeletingUser ? 'Deleting & Reassigning...' : '🗑️ Confirm Offboarding & Delete'}
+                  </button>
                 </div>
               </div>
             </div>
