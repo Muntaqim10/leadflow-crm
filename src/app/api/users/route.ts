@@ -20,11 +20,25 @@ export async function GET() {
     // Merge auth users and db users
     const allUserMap = new Map<string, any>();
 
+    // Helper to determine permission tier from role string or metadata
+    const getPermissionTier = (roleStr: string, metaTier?: string): 'admin' | 'sales' | 'read_only' => {
+      if (metaTier === 'admin' || metaTier === 'sales' || metaTier === 'read_only') return metaTier;
+      const lower = (roleStr || '').toLowerCase();
+      if (lower.includes('general manager') || lower.includes('admin') || lower.includes('supervisor') || lower.includes('director')) {
+        return 'admin';
+      }
+      if (lower.includes('read') || lower.includes('viewer') || lower.includes('guest')) {
+        return 'read_only';
+      }
+      return 'sales';
+    };
+
     // 1. Process Auth Users (active accounts with Supabase Auth credentials)
     authUsers.forEach(authU => {
       const dbU = dbUsers.find(d => d.id === authU.id || (d.email && d.email.toLowerCase() === authU.email?.toLowerCase()));
       const role = dbU?.role || authU.user_metadata?.role || 'Sales Agent';
       const name = dbU?.name || authU.user_metadata?.name || authU.user_metadata?.full_name || authU.email?.split('@')[0] || 'User';
+      const permission_tier = getPermissionTier(role, authU.user_metadata?.permission_tier);
       const userLeads = leads.filter(l => 
         l.assigned_sales_manager_id === authU.id || 
         l.user_id === authU.id || 
@@ -37,6 +51,7 @@ export async function GET() {
         email: authU.email || '',
         name,
         role,
+        permission_tier,
         hasAuthAccount: true,
         leadsCount: userLeads.length,
         lastSignIn: authU.last_sign_in_at || null,
@@ -57,11 +72,13 @@ export async function GET() {
           l.user_id === dbU.id || 
           l.manager_id === dbU.id
         );
+        const permission_tier = getPermissionTier(dbU.role || 'Sales Agent');
         allUserMap.set(dbU.id, {
           id: dbU.id,
           email: dbU.email || '',
           name: dbU.name,
           role: dbU.role || 'Sales Agent',
+          permission_tier,
           hasAuthAccount: false,
           leadsCount: userLeads.length,
           confirmed: false,
@@ -81,7 +98,7 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
-    const { email, name, role, password } = await request.json();
+    const { email, name, role, permission_tier, password } = await request.json();
     if (!email || !name) {
       return NextResponse.json({ error: 'Email and Name are required' }, { status: 400 });
     }
@@ -93,6 +110,7 @@ export async function POST(request: Request) {
 
     const userPassword = password || 'Leadflow' + Math.floor(1000 + Math.random() * 9000) + '!';
     const userRole = role || 'Sales Agent';
+    const userTier = permission_tier || 'sales';
 
     // 1. Create in Supabase Auth
     let userId: string | null = null;
@@ -101,7 +119,7 @@ export async function POST(request: Request) {
         email: email.trim(),
         password: userPassword,
         email_confirm: true,
-        user_metadata: { name: name.trim(), role: userRole }
+        user_metadata: { name: name.trim(), role: userRole, permission_tier: userTier }
       });
 
       if (createError) {
@@ -125,7 +143,14 @@ export async function POST(request: Request) {
 
     return NextResponse.json({
       success: true,
-      user: { id: userId, email: email.trim(), name: name.trim(), role: userRole, temporaryPassword: userPassword }
+      user: {
+        id: userId,
+        email: email.trim(),
+        name: name.trim(),
+        role: userRole,
+        permission_tier: userTier,
+        temporaryPassword: userPassword
+      }
     });
   } catch (error: any) {
     console.error('Failed to create user:', error);
@@ -179,7 +204,7 @@ export async function DELETE(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
-    const { id, name, role } = await request.json();
+    const { id, name, role, permission_tier } = await request.json();
     if (!id) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
@@ -204,18 +229,22 @@ export async function PATCH(request: Request) {
     // Also update auth user metadata
     if (supabase.auth?.admin) {
       try {
-        await supabase.auth.admin.updateUserById(id, {
-          user_metadata: {
-            ...(name ? { name } : {}),
-            ...(role ? { role } : {})
-          }
-        });
+        const metadataUpdates: any = {};
+        if (name !== undefined) metadataUpdates.name = name;
+        if (role !== undefined) metadataUpdates.role = role;
+        if (permission_tier !== undefined) metadataUpdates.permission_tier = permission_tier;
+
+        if (Object.keys(metadataUpdates).length > 0) {
+          await supabase.auth.admin.updateUserById(id, {
+            user_metadata: metadataUpdates
+          });
+        }
       } catch (authErr) {
         console.warn('Failed to update auth metadata:', authErr);
       }
     }
 
-    return NextResponse.json(data);
+    return NextResponse.json({ ...data, permission_tier });
   } catch (error: any) {
     console.error('Failed to update user:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

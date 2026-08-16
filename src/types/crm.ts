@@ -25,6 +25,7 @@ export interface User {
   id: string;
   name: string;
   role: string;
+  permission_tier?: 'admin' | 'sales' | 'read_only';
   email?: string;
   leadsCount?: number;
   lastSignIn?: string | null;

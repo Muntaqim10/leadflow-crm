@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { User as UserType, Lead } from '@/types/crm';
-import { Plus, Edit2, Trash2, Shield, AlertTriangle } from 'lucide-react';
+import { Plus, Edit2, Trash2, Shield, AlertTriangle, ShieldCheck, Briefcase, Eye } from 'lucide-react';
 
 interface SettingsModalProps {
   isOpen: boolean;
@@ -78,12 +78,14 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
   const [newUserName, setNewUserName] = useState('');
   const [newUserEmail, setNewUserEmail] = useState('');
   const [newUserRole, setNewUserRole] = useState('Sales Agent');
+  const [newUserTier, setNewUserTier] = useState<'admin' | 'sales' | 'read_only'>('sales');
   const [newUserPassword, setNewUserPassword] = useState('');
   const [isAddingUser, setIsAddingUser] = useState(false);
 
   const [editingUser, setEditingUser] = useState<UserType | null>(null);
   const [editUserName, setEditUserName] = useState('');
   const [editUserRole, setEditUserRole] = useState('Sales Agent');
+  const [editUserTier, setEditUserTier] = useState<'admin' | 'sales' | 'read_only'>('sales');
   const [isEditingUserSubmitting, setIsEditingUserSubmitting] = useState(false);
 
   const [deletingUser, setDeletingUser] = useState<UserType | null>(null);
@@ -103,7 +105,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         body: JSON.stringify({
           name: newUserName.trim(),
           email: newUserEmail.trim(),
-          role: newUserRole,
+          role: newUserRole.trim() || 'Sales Agent',
+          permission_tier: newUserTier,
           password: newUserPassword || undefined
         })
       });
@@ -114,6 +117,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       setIsAddUserModalOpen(false);
       setNewUserName('');
       setNewUserEmail('');
+      setNewUserRole('Sales Agent');
+      setNewUserTier('sales');
       setNewUserPassword('');
       onRefreshUsers();
     } catch (err: any) {
@@ -134,7 +139,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
         body: JSON.stringify({
           id: editingUser.id,
           name: editUserName.trim(),
-          role: editUserRole
+          role: editUserRole.trim() || 'Sales Agent',
+          permission_tier: editUserTier
         })
       });
       const data = await res.json();
@@ -470,30 +476,52 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                         <tr>
                           <th className="py-3 px-4">Name</th>
                           <th className="py-3 px-4">Email</th>
-                          <th className="py-3 px-4">Role</th>
+                          <th className="py-3 px-4">Position / Title</th>
+                          <th className="py-3 px-4">Access Level</th>
                           <th className="py-3 px-4 text-right">Actions</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-200">
                         {users.length === 0 ? (
                           <tr>
-                            <td colSpan={4} className="p-8 text-center text-slate-400">
+                            <td colSpan={5} className="p-8 text-center text-slate-400">
                               No team members found. Click &quot;+ Add Team Member&quot; to invite someone.
                             </td>
                           </tr>
                         ) : (
                           users.map((u) => {
                             const isCurrent = u.email?.toLowerCase() === currentUserEmail.toLowerCase();
+                            const tier = u.permission_tier || (
+                              u.role?.toLowerCase().includes('general manager') || u.role?.toLowerCase().includes('admin') || u.role?.toLowerCase().includes('supervisor') || u.role?.toLowerCase().includes('director')
+                                ? 'admin'
+                                : u.role?.toLowerCase().includes('read') || u.role?.toLowerCase().includes('viewer')
+                                ? 'read_only'
+                                : 'sales'
+                            );
+
                             return (
                               <tr key={u.id} className="hover:bg-slate-50 transition-colors">
                                 <td className="py-3.5 px-4 font-bold text-slate-900">
                                   {u.name} {isCurrent && <span className="text-slate-400 font-normal ml-1">(You)</span>}
                                 </td>
                                 <td className="py-3.5 px-4 text-slate-600 font-mono text-xs">{u.email || '—'}</td>
+                                <td className="py-3.5 px-4 font-medium text-slate-800">
+                                  {u.role || 'Sales Agent'}
+                                </td>
                                 <td className="py-3.5 px-4">
-                                  <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
-                                    {u.role}
-                                  </span>
+                                  {tier === 'admin' ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200">
+                                      <ShieldCheck className="h-3 w-3 text-purple-600" /> Administrator
+                                    </span>
+                                  ) : tier === 'read_only' ? (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
+                                      <Eye className="h-3 w-3 text-slate-500" /> Read-Only
+                                    </span>
+                                  ) : (
+                                    <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                                      <Briefcase className="h-3 w-3 text-blue-600" /> Sales Team
+                                    </span>
+                                  )}
                                 </td>
                                 <td className="py-3.5 px-4 text-right space-x-3">
                                   <button
@@ -502,8 +530,9 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                       setEditingUser(u);
                                       setEditUserName(u.name);
                                       setEditUserRole(u.role);
+                                      setEditUserTier(tier);
                                     }}
-                                    className="text-blue-600 hover:text-blue-800 font-semibold"
+                                    className="text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
                                   >
                                     Edit
                                   </button>
@@ -515,7 +544,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                                         setConfirmDeleteChecked(false);
                                         setReassignUserId(otherUsers[0]?.id || '');
                                       }}
-                                      className="text-rose-600 hover:text-rose-800 font-semibold"
+                                      className="text-rose-600 hover:text-rose-800 font-semibold cursor-pointer"
                                     >
                                       Delete User
                                     </button>
@@ -623,6 +652,61 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-slate-800"
                 />
               </div>
+
+              {/* Permission Tier Selector */}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1.5">Permission / Access Tier</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setNewUserTier('admin')}
+                    className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                      newUserTier === 'admin'
+                        ? 'bg-purple-50/90 border-purple-500 ring-2 ring-purple-500/20 text-purple-900 shadow-2xs'
+                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      <ShieldCheck className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+                      <span>Admin</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 mt-1.5 leading-tight">Full access (taxes, users, delete)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewUserTier('sales')}
+                    className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                      newUserTier === 'sales'
+                        ? 'bg-blue-50/90 border-blue-500 ring-2 ring-blue-500/20 text-blue-900 shadow-2xs'
+                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      <Briefcase className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                      <span>Sales Team</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 mt-1.5 leading-tight">Manage deals, tasks & tours</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setNewUserTier('read_only')}
+                    className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                      newUserTier === 'read_only'
+                        ? 'bg-slate-100 border-slate-500 ring-2 ring-slate-500/20 text-slate-900 shadow-2xs'
+                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      <Eye className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                      <span>Read-Only</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 mt-1.5 leading-tight">View-only stays & calendar</span>
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Job Title / Position</label>
                 <input
@@ -697,7 +781,7 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             <div className="flex justify-between items-center pb-2 border-b border-slate-100">
               <div>
                 <h3 className="font-bold text-slate-900 text-sm">Edit Team Member</h3>
-                <p className="text-[11px] text-slate-500">Update name or customize workspace position</p>
+                <p className="text-[11px] text-slate-500">Update name, access tier, or customize workspace position</p>
               </div>
               <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-slate-700 text-lg cursor-pointer">
                 &times;
@@ -714,6 +798,61 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-slate-800"
                 />
               </div>
+
+              {/* Permission Tier Selector */}
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1.5">Permission / Access Tier</label>
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setEditUserTier('admin')}
+                    className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                      editUserTier === 'admin'
+                        ? 'bg-purple-50/90 border-purple-500 ring-2 ring-purple-500/20 text-purple-900 shadow-2xs'
+                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      <ShieldCheck className="h-3.5 w-3.5 text-purple-600 shrink-0" />
+                      <span>Admin</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 mt-1.5 leading-tight">Full access (taxes, users, delete)</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditUserTier('sales')}
+                    className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                      editUserTier === 'sales'
+                        ? 'bg-blue-50/90 border-blue-500 ring-2 ring-blue-500/20 text-blue-900 shadow-2xs'
+                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      <Briefcase className="h-3.5 w-3.5 text-blue-600 shrink-0" />
+                      <span>Sales Team</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 mt-1.5 leading-tight">Manage deals, tasks & tours</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setEditUserTier('read_only')}
+                    className={`p-2.5 rounded-xl border text-left flex flex-col justify-between transition-all cursor-pointer ${
+                      editUserTier === 'read_only'
+                        ? 'bg-slate-100 border-slate-500 ring-2 ring-slate-500/20 text-slate-900 shadow-2xs'
+                        : 'bg-white border-slate-200 hover:border-slate-300 text-slate-700'
+                    }`}
+                  >
+                    <div className="flex items-center gap-1.5 font-bold text-xs">
+                      <Eye className="h-3.5 w-3.5 text-slate-600 shrink-0" />
+                      <span>Read-Only</span>
+                    </div>
+                    <span className="text-[10px] text-slate-500 mt-1.5 leading-tight">View-only stays & calendar</span>
+                  </button>
+                </div>
+              </div>
+
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Job Title / Position</label>
                 <input
