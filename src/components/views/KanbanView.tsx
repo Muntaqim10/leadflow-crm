@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Lead } from '@/types/crm';
-import { calculateLeadScore } from '@/lib/calculations';
+import { calculateLeadScore, getLeadBookingType } from '@/lib/calculations';
 
 export const PIPELINE_STATUSES = [
   { key: 'new', label: 'New Inquiry', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20', solidColor: 'bg-blue-500' },
@@ -50,8 +50,8 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 shrink-0">
         <p className="text-xs sm:text-sm text-slate-500">
           {viewMode === 'board'
-            ? 'Drag and drop cards or click columns to move. Updates are synced live to database.'
-            : 'Manage, search, and edit your leads in a clean list format.'}
+            ? 'Drag and drop cards or click columns to move. Live sync enabled with full booking type classification.'
+            : 'Manage, search, and edit your leads in a clean list format with type classifications.'}
         </p>
 
         {/* View mode toggle */}
@@ -100,79 +100,84 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
 
                 {/* Cards Container */}
                 <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin min-h-[300px]">
-                  {colLeads.map((lead) => (
-                    <div
-                      key={lead.id}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, lead.id)}
-                      onClick={() => setSelectedLead(lead)}
-                      className="bg-white p-4 rounded-lg border border-slate-200 hover:border-blue-500/40 cursor-grab active:cursor-grabbing transition-all hover:shadow-lg group"
-                    >
-                      {(() => {
-                        const score = calculateLeadScore(lead);
-                        return (
-                          <div className="flex justify-between items-start mb-2">
-                            <span className="font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors">
+                  {colLeads.map((lead) => {
+                    const score = calculateLeadScore(lead);
+                    const bookingType = getLeadBookingType(lead.rooms_or_event_details);
+
+                    return (
+                      <div
+                        key={lead.id}
+                        draggable
+                        onDragStart={(e) => handleDragStart(e, lead.id)}
+                        onClick={() => setSelectedLead(lead)}
+                        className="bg-white p-4 rounded-xl border border-slate-200 hover:border-blue-500/40 cursor-grab active:cursor-grabbing transition-all hover:shadow-md group"
+                      >
+                        <div className="flex justify-between items-start mb-2">
+                          <div className="pr-2">
+                            <span className="font-bold text-slate-800 text-sm group-hover:text-blue-600 transition-colors block leading-tight">
                               {lead.name_company}
                             </span>
-                            <span
-                              className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded border ${
-                                lead.status === 'confirmed'
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  : lead.status === 'lost'
-                                  ? 'bg-slate-50 text-slate-400 border-slate-200'
-                                  : score >= 70
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  : score >= 40
-                                  ? 'bg-blue-50 text-blue-700 border-blue-200'
-                                  : 'bg-rose-50 text-rose-700 border-rose-200'
-                              }`}
-                            >
-                              {lead.status === 'confirmed'
-                                ? '🏆 100%'
+                            {/* Type & Segment Badges */}
+                            <div className="flex flex-wrap gap-1 mt-1.5">
+                              <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold border ${bookingType.badgeClass}`}>
+                                {bookingType.icon} {bookingType.label}
+                              </span>
+                              <span className="px-1.5 py-0.5 rounded text-[9px] font-semibold bg-slate-100 text-slate-600 border border-slate-200 capitalize">
+                                {lead.market_segment?.replace(/_/g, ' ') || 'Leisure'}
+                              </span>
+                            </div>
+                          </div>
+                          <span
+                            className={`text-[10px] font-extrabold px-1.5 py-0.5 rounded border shrink-0 ${
+                              lead.status === 'confirmed'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : lead.status === 'lost'
-                                ? '0%'
-                                : `🎯 ${score}%`}
+                                ? 'bg-slate-50 text-slate-400 border-slate-200'
+                                : score >= 70
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : score >= 40
+                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                            }`}
+                          >
+                            {lead.status === 'confirmed'
+                              ? '🏆 100%'
+                              : lead.status === 'lost'
+                              ? '0%'
+                              : `🎯 ${score}%`}
+                          </span>
+                        </div>
+
+                        <div className="space-y-1 text-xs text-slate-500 mb-3 mt-2.5">
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Dates:</span>
+                            <span className="text-slate-700 font-medium">
+                              {lead.check_in_date} to {lead.check_out_date}
                             </span>
                           </div>
-                        );
-                      })()}
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Details:</span>
+                            <span className="text-slate-700 font-medium truncate max-w-[170px]" title={lead.rooms_or_event_details}>
+                              {formatRoomDetailsDisplay(lead.rooms_or_event_details)}
+                            </span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-slate-400">Source:</span>
+                            <span className="text-slate-700 font-medium capitalize">
+                              {lead.lead_source?.replace(/_/g, ' ')}
+                            </span>
+                          </div>
+                        </div>
 
-                      <div className="space-y-1 text-xs text-slate-500 mb-3">
-                        <div className="flex justify-between">
-                          <span>Dates:</span>
-                          <span className="text-slate-700 font-medium">
-                            {lead.check_in_date} to {lead.check_out_date}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Details:</span>
-                          <span className="text-slate-700 font-medium truncate max-w-[170px]" title={lead.rooms_or_event_details}>
-                            {formatRoomDetailsDisplay(lead.rooms_or_event_details)}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Source:</span>
-                          <span className="text-slate-700 font-medium capitalize">
-                            {lead.lead_source?.replace(/_/g, ' ')}
-                          </span>
-                        </div>
-                        <div className="flex justify-between">
-                          <span>Segment:</span>
-                          <span className="text-slate-700 font-medium capitalize">
-                            {lead.market_segment?.replace(/_/g, ' ')}
+                        <div className="flex justify-between items-center pt-2 border-t border-slate-100">
+                          <span className="text-xs font-bold text-slate-700">Potential Value:</span>
+                          <span className="text-xs font-extrabold text-emerald-600">
+                            ${parseFloat(lead.revenue_potential || '0').toLocaleString()}
                           </span>
                         </div>
                       </div>
-
-                      <div className="flex justify-between items-center pt-2 border-t border-slate-100">
-                        <span className="text-xs font-bold text-slate-700">Value:</span>
-                        <span className="text-xs font-extrabold text-emerald-600">
-                          ${parseFloat(lead.revenue_potential || '0').toLocaleString()}
-                        </span>
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
 
                   {colLeads.length === 0 && (
                     <div className="h-24 border border-dashed border-slate-200 rounded-lg flex items-center justify-center text-slate-400 text-xs">
@@ -192,12 +197,13 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
               <thead className="bg-slate-50 border-b border-slate-200 text-slate-400 font-bold uppercase tracking-wider text-[10px]">
                 <tr>
                   <th className="p-4">Client / Company</th>
+                  <th className="p-4">Lead Type</th>
+                  <th className="p-4">Segment</th>
                   <th className="p-4">Status</th>
                   <th className="p-4">Win Prob</th>
                   <th className="p-4">Stay Dates</th>
                   <th className="p-4">Details</th>
                   <th className="p-4">Source</th>
-                  <th className="p-4">Segment</th>
                   <th className="p-4 text-right">Potential Rev</th>
                 </tr>
               </thead>
@@ -205,6 +211,8 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                 {filteredLeads.map((lead) => {
                   const score = calculateLeadScore(lead);
                   const statusInfo = PIPELINE_STATUSES.find((s) => s.key === lead.status) || PIPELINE_STATUSES[0];
+                  const bookingType = getLeadBookingType(lead.rooms_or_event_details);
+
                   return (
                     <tr
                       key={lead.id}
@@ -212,6 +220,12 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                       className="hover:bg-slate-50/60 cursor-pointer transition-colors"
                     >
                       <td className="p-4 font-bold text-slate-800">{lead.name_company}</td>
+                      <td className="p-4">
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${bookingType.badgeClass}`}>
+                          {bookingType.icon} {bookingType.label}
+                        </span>
+                      </td>
+                      <td className="p-4 text-slate-600 capitalize">{lead.market_segment?.replace(/_/g, ' ') || 'Leisure'}</td>
                       <td className="p-4">
                         <span className={`px-2 py-0.5 rounded text-[10px] font-bold border uppercase tracking-wider ${statusInfo.color}`}>
                           {statusInfo.label}
@@ -241,7 +255,6 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                         {formatRoomDetailsDisplay(lead.rooms_or_event_details)}
                       </td>
                       <td className="p-4 text-slate-600 capitalize">{lead.lead_source?.replace(/_/g, ' ')}</td>
-                      <td className="p-4 text-slate-600 capitalize">{lead.market_segment?.replace(/_/g, ' ')}</td>
                       <td className="p-4 text-right font-bold text-emerald-600">
                         ${parseFloat(lead.revenue_potential || '0').toLocaleString()}
                       </td>
