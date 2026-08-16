@@ -4962,14 +4962,18 @@ export default function App() {
                                     >
                                       Edit
                                     </button>
-                                    {!isCurrentUser && (
+                                    {!isCurrentUser ? (
                                       <button
                                         type="button"
                                         onClick={() => handlePromptDeleteUser(u)}
                                         className="text-rose-600 hover:text-rose-800 font-medium transition-colors"
                                       >
-                                        Delete
+                                        Delete User
                                       </button>
+                                    ) : (
+                                      <span className="text-slate-400 text-xs italic" title="You cannot delete your own active administrator account">
+                                        (Current Account)
+                                      </span>
                                     )}
                                   </td>
                                 </tr>
@@ -4979,6 +4983,11 @@ export default function App() {
                         </tbody>
                       </table>
                     </div>
+                    {users.length === 1 && (
+                      <p className="text-xs text-slate-500">
+                        💡 <strong>Note:</strong> You are currently the only registered account. When you add other team members (via <strong>+ Add User</strong>) or when they sign up, a red <strong>Delete User</strong> button appears on their accounts with automatic lead reassignment.
+                      </p>
+                    )}
                   </div>
                 )}
 
