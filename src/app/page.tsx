@@ -345,11 +345,11 @@ export default function App() {
   // Auth states
   const [session, setSession] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
+  const [authMode, setAuthMode] = useState<'signin' | 'signup' | 'forgot_password' | 'reset_password'>('signin');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
   const [authName, setAuthName] = useState('');
-  const [authRole, setAuthRole] = useState('Sales Manager');
+  const [authRole, setAuthRole] = useState('Sales Agent');
   const [showPassword, setShowPassword] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState('1');
   const [authError, setAuthError] = useState('');
@@ -358,6 +358,13 @@ export default function App() {
 
   useEffect(() => {
     let active = true;
+
+    // Check if recovery link was opened in URL
+    if (typeof window !== 'undefined') {
+      if (window.location.hash.includes('type=recovery') || window.location.href.includes('reset=true')) {
+        setAuthMode('reset_password');
+      }
+    }
 
     // Check saved local session if Supabase is offline
     const savedLocalSession = typeof window !== 'undefined' ? localStorage.getItem('leadflow_demo_session') : null;
@@ -385,8 +392,11 @@ export default function App() {
         if (active) setAuthLoading(false);
       });
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, supaSession) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, supaSession) => {
       if (active) {
+        if (event === 'PASSWORD_RECOVERY') {
+          setAuthMode('reset_password');
+        }
         if (supaSession) setSession(supaSession);
         setAuthLoading(false);
       }
@@ -447,11 +457,15 @@ export default function App() {
 
   // Authorization Helpers
   const currentUserEmail = session?.user?.email || '';
+  const currentUserObj = users.find(u => u.email?.toLowerCase() === currentUserEmail.toLowerCase());
+  const currentUserRole = currentUserObj?.role || session?.user?.user_metadata?.role || '';
+  const isGeneralManager = currentUserRole.toLowerCase().includes('general manager') || currentUserEmail === 'arzaan@leadflow.com';
+  const isFrontDeskSupervisor = currentUserRole.toLowerCase().includes('front desk supervisor') || currentUserEmail === 'muntaqim@leadflow.com';
   const isMuntaqim = currentUserEmail === 'muntaqim@leadflow.com';
   const isArzaan = currentUserEmail === 'arzaan@leadflow.com';
   const canDeleteLeads = currentUserEmail !== 'rokeya@leadflow.com' && currentUserEmail !== 'riham@leadflow.com';
-  const canManageUsers = isMuntaqim || isArzaan;
-  const canManageHotelDetails = isMuntaqim;
+  const canManageUsers = isGeneralManager || isFrontDeskSupervisor || isMuntaqim || isArzaan;
+  const canManageHotelDetails = isGeneralManager || isFrontDeskSupervisor || isMuntaqim;
 
   // Settings State
   const [profileName, setProfileName] = useState('');
@@ -481,11 +495,10 @@ export default function App() {
 
   const handleAddUser = () => {
     if (!newUserName.trim() || !newUserRole.trim()) return;
-    // TODO: Create user via API if needed. For now, public sign up is used.
     setIsAddUserModalOpen(false);
     setNewUserName('');
-    setNewUserRole('Sales Manager');
-    setSuccessMsg('User added successfully!');
+    setNewUserRole('Sales Agent');
+    setSuccessMsg('To add team members, have them sign up with their work email. You can then assign their role here!');
   };
 
   const handleEditUser = (user: User) => {
@@ -495,11 +508,24 @@ export default function App() {
     setIsEditUserModalOpen(true);
   };
 
-  const handleSaveEditUser = () => {
-    if (!editUserName.trim() || !editUserRole.trim()) return;
-    // TODO: Update user via API
-    setIsEditUserModalOpen(false);
-    setSuccessMsg('User updated successfully!');
+  const handleSaveEditUser = async () => {
+    if (!editUserName.trim() || !editUserRole.trim() || !editingUserId) return;
+    try {
+      const res = await fetch('/api/users', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: editingUserId, name: editUserName, role: editUserRole })
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to update user');
+      }
+      mutate('/api/users');
+      setIsEditUserModalOpen(false);
+      setSuccessMsg('User role updated successfully!');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to update user');
+    }
   };
   const [leadDetailsTab, setLeadDetailsTab] = useState<'details' | 'timeline' | 'tasks'>('details');
   const [leadActivities, setLeadActivities] = useState<any[]>([]);
@@ -924,7 +950,7 @@ export default function App() {
       const res = await fetch('/api/auth/signup', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: authEmail, password: authPassword, name: authName, role: authRole })
+        body: JSON.stringify({ email: authEmail, password: authPassword, name: authName })
       });
       const data = await res.json();
       if (!res.ok) {
@@ -938,6 +964,41 @@ export default function App() {
       }
     } catch (err: any) {
       setAuthError(err.message || 'Failed to sign up. Please try again.');
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const handleForgotPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthSubmitting(true);
+    try {
+      const redirectUrl = typeof window !== 'undefined' ? `${window.location.origin}` : '';
+      const { error } = await supabase.auth.resetPasswordForEmail(authEmail, {
+        redirectTo: redirectUrl
+      });
+      if (error) throw error;
+      setSuccessMsg('Password reset link sent! Check your email inbox.');
+    } catch (err: any) {
+      setAuthError(err.message || 'Failed to send reset link. Please try again.');
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const handleResetPassword = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthSubmitting(true);
+    try {
+      const { error } = await supabase.auth.updateUser({ password: authPassword });
+      if (error) throw error;
+      setSuccessMsg('Password successfully updated! You can now log in.');
+      setAuthPassword('');
+      setAuthMode('signin');
+    } catch (err: any) {
+      setAuthError(err.message || 'Failed to update password.');
     } finally {
       setAuthSubmitting(false);
     }
@@ -1816,7 +1877,7 @@ export default function App() {
     );
   }
 
-  if (!session) {
+  if (!session || authMode === 'reset_password') {
     return (
       <div className="flex min-h-screen w-screen bg-white font-sans antialiased overflow-hidden">
 
@@ -1833,10 +1894,31 @@ export default function App() {
           </div>
 
           <div className="w-full max-w-md mx-auto my-auto">
-            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">{authMode === 'signin' ? 'Welcome Back' : 'Create Account'}</h2>
-            <p className="text-slate-500 text-sm mb-8">{authMode === 'signin' ? 'Sign in to your sales workspace to continue.' : 'Register a new account to join the workspace.'}</p>
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
+              {authMode === 'signin' && 'Welcome Back'}
+              {authMode === 'signup' && 'Create Account'}
+              {authMode === 'forgot_password' && 'Reset Password'}
+              {authMode === 'reset_password' && 'Set New Password'}
+            </h2>
+            <p className="text-slate-500 text-sm mb-8">
+              {authMode === 'signin' && 'Sign in to your sales workspace to continue.'}
+              {authMode === 'signup' && 'Register a new account to join the workspace.'}
+              {authMode === 'forgot_password' && "Enter your email address and we'll send you a password reset link."}
+              {authMode === 'reset_password' && 'Enter your new password below to secure your account.'}
+            </p>
 
-            <form onSubmit={authMode === 'signin' ? handleSignIn : handleSignUp} className="space-y-5">
+            <form
+              onSubmit={
+                authMode === 'signin'
+                  ? handleSignIn
+                  : authMode === 'signup'
+                  ? handleSignUp
+                  : authMode === 'forgot_password'
+                  ? handleForgotPassword
+                  : handleResetPassword
+              }
+              className="space-y-5"
+            >
               {authError && (
                 <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs px-4 py-3 rounded-lg flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -1851,74 +1933,77 @@ export default function App() {
               )}
 
               {authMode === 'signup' && (
-                <>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Full Name</label>
-                    <input
-                      type="text"
-                      required
-                      value={authName}
-                      onChange={(e) => setAuthName(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-slate-400"
-                      placeholder="e.g. Arzaan Shaikh"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Role</label>
-                    <select
-                      value={authRole}
-                      onChange={(e) => setAuthRole(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
-                    >
-                      <option value="General Manager">General Manager</option>
-                      <option value="Director of Sales">Director of Sales</option>
-                      <option value="Sales Manager">Sales Manager</option>
-                      <option value="Front Desk Supervisor">Front Desk Supervisor</option>
-                    </select>
-                  </div>
-                </>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    value={authName}
+                    onChange={(e) => setAuthName(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-slate-400"
+                    placeholder="e.g. Arzaan Shaikh"
+                  />
+                </div>
               )}
 
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email Address</label>
-                <input
-                  type="email"
-                  required
-                  value={authEmail}
-                  onChange={(e) => setAuthEmail(e.target.value)}
-                  className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-slate-400"
-                  placeholder="name@company.com"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Password</label>
-                <div className="relative">
+              {authMode !== 'reset_password' && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email Address</label>
                   <input
-                    type={showPassword ? "text" : "password"}
+                    type="email"
                     required
-                    value={authPassword}
-                    onChange={(e) => setAuthPassword(e.target.value)}
-                    className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 pr-10 text-sm text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-slate-400"
-                    placeholder="••••••••"
+                    value={authEmail}
+                    onChange={(e) => setAuthEmail(e.target.value)}
+                    className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-slate-400"
+                    placeholder="name@company.com"
                   />
+                </div>
+              )}
+
+              {authMode !== 'forgot_password' && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                    {authMode === 'reset_password' ? 'New Password' : 'Password'}
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? "text" : "password"}
+                      required
+                      value={authPassword}
+                      onChange={(e) => setAuthPassword(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 pr-10 text-sm text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-slate-400"
+                      placeholder="••••••••"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    >
+                      {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {authMode === 'signin' && (
+                <div className="flex items-center justify-between text-sm">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                    <span className="text-slate-600">Remember me</span>
+                  </label>
                   <button
                     type="button"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="absolute inset-y-0 right-0 flex items-center pr-3 text-slate-400 hover:text-slate-600 focus:outline-none"
+                    onClick={() => {
+                      setAuthMode('forgot_password');
+                      setAuthError('');
+                      setSuccessMsg('');
+                    }}
+                    className="text-blue-600 font-medium hover:text-blue-800 transition-colors"
                   >
-                    {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+                    Forgot your password?
                   </button>
                 </div>
-              </div>
-
-              <div className="flex items-center justify-between text-sm">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="checkbox" className="rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
-                  <span className="text-slate-600">Remember me</span>
-                </label>
-                <button type="button" className="text-blue-600 font-medium hover:text-blue-800">Forgot your password?</button>
-              </div>
+              )}
 
               <button
                 type="submit"
@@ -1928,25 +2013,64 @@ export default function App() {
                 {authSubmitting ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <span>{authMode === 'signin' ? 'Log in' : 'Create Account'}</span>
+                  <span>
+                    {authMode === 'signin' && 'Log in'}
+                    {authMode === 'signup' && 'Create Account'}
+                    {authMode === 'forgot_password' && 'Send Reset Link'}
+                    {authMode === 'reset_password' && 'Update Password'}
+                  </span>
                 )}
               </button>
               
               <div className="text-center mt-6">
-                <p className="text-sm text-slate-500">
-                  {authMode === 'signin' ? "Don't have an account? " : "Already have an account? "}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
-                      setAuthError('');
-                      setSuccessMsg('');
-                    }}
-                    className="text-blue-600 font-semibold hover:text-blue-800 transition-colors"
-                  >
-                    {authMode === 'signin' ? 'Sign up' : 'Log in'}
-                  </button>
-                </p>
+                {authMode === 'signin' && (
+                  <p className="text-sm text-slate-500">
+                    Don't have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('signup');
+                        setAuthError('');
+                        setSuccessMsg('');
+                      }}
+                      className="text-blue-600 font-semibold hover:text-blue-800 transition-colors"
+                    >
+                      Sign up
+                    </button>
+                  </p>
+                )}
+                {authMode === 'signup' && (
+                  <p className="text-sm text-slate-500">
+                    Already have an account?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('signin');
+                        setAuthError('');
+                        setSuccessMsg('');
+                      }}
+                      className="text-blue-600 font-semibold hover:text-blue-800 transition-colors"
+                    >
+                      Log in
+                    </button>
+                  </p>
+                )}
+                {(authMode === 'forgot_password' || authMode === 'reset_password') && (
+                  <p className="text-sm text-slate-500">
+                    Remember your password?{' '}
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAuthMode('signin');
+                        setAuthError('');
+                        setSuccessMsg('');
+                      }}
+                      className="text-blue-600 font-semibold hover:text-blue-800 transition-colors"
+                    >
+                      Back to Log in
+                    </button>
+                  </p>
+                )}
               </div>
             </form>
           </div>

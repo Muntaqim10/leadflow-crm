@@ -15,15 +15,16 @@ export async function POST(request: Request) {
     }
 
     // 1. Sign up user in Supabase Auth
-    // By default, if email_confirm is enabled in Supabase, this will send an email.
-    // If not, it will immediately create the user.
+    // By default, every new user starts with 'Sales Agent' role.
+    // Roles can only be updated by General Manager or Front Desk Supervisor in Settings.
+    const defaultRole = 'Sales Agent';
     const { data: authData, error: authError } = await supabase.auth.signUp({
       email,
       password,
       options: {
         data: {
           name,
-          role: role || 'Sales Manager',
+          role: defaultRole,
         }
       }
     });
@@ -39,7 +40,7 @@ export async function POST(request: Request) {
         id: authData.user.id,
         email,
         name,
-        role: role || 'Sales Manager',
+        role: defaultRole,
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
