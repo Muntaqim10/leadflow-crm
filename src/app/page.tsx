@@ -480,8 +480,9 @@ export default function App() {
   const [profileName, setProfileName] = useState('');
   const [profileEmail, setProfileEmail] = useState('');
   const [profilePhone, setProfilePhone] = useState('');
-  const [globalTaxRate, setGlobalTaxRate] = useState('6.0');
-  const [globalGratuity, setGlobalGratuity] = useState('20.0');
+  const [roomTaxRate, setRoomTaxRate] = useState('15.0');
+  const [eventTaxRate, setEventTaxRate] = useState('6.0');
+  const [eventGratuityRate, setEventGratuityRate] = useState('20.0');
 
   const [hotelName, setHotelName] = useState('Hotel Flow Grand');
   const [hotelPhone, setHotelPhone] = useState('+1 (555) 123-4567');
@@ -805,13 +806,15 @@ export default function App() {
       });
     }
 
-    // Add guest rooms revenue plus 15% tax
-    subtotal += roomRevenue * 1.15;
+    // 1. Add guest rooms revenue plus room occupancy tax
+    const roomTaxMultiplier = 1 + (parseFloat(roomTaxRate) || 15) / 100;
+    subtotal += roomRevenue * roomTaxMultiplier;
 
-    // 2. Add event rental
+    // 2. Add event rental plus event tax and gratuity
     if (formDetails) {
       const eventRate = parseFloat(formEventRoomRate) || 0;
-      subtotal += eventRate * 1.26; // Includes 6% tax + 20% gratuity
+      const eventTaxMultiplier = 1 + ((parseFloat(eventTaxRate) || 6) + (parseFloat(eventGratuityRate) || 20)) / 100;
+      subtotal += eventRate * eventTaxMultiplier;
     }
 
     // 3. Add accessories
@@ -821,7 +824,7 @@ export default function App() {
     });
 
     setFormRevenue(subtotal.toFixed(2));
-  }, [formGuestRooms, formEventRoomRate, formAccessories, formCheckIn, formCheckOut, formDetails]);
+  }, [formGuestRooms, formEventRoomRate, formAccessories, formCheckIn, formCheckOut, formDetails, roomTaxRate, eventTaxRate, eventGratuityRate]);
 
   useEffect(() => {
     if (session) {
@@ -1576,15 +1579,19 @@ export default function App() {
         `;
       }
 
-      const guestRoomsTax = totalRoomsRev * 0.15;
-      const eventTax = eventRate * 0.06;
-      const eventGratuity = eventRate * 0.20;
+      const roomTaxPct = parseFloat(roomTaxRate) || 15;
+      const eventTaxPct = parseFloat(eventTaxRate) || 6;
+      const eventGratuityPct = parseFloat(eventGratuityRate) || 20;
+
+      const guestRoomsTax = totalRoomsRev * (roomTaxPct / 100);
+      const eventTax = eventRate * (eventTaxPct / 100);
+      const eventGratuity = eventRate * (eventGratuityPct / 100);
       const grandTotal = totalRoomsRev + guestRoomsTax + eventRate + eventTax + eventGratuity + totalAccessories;
 
       const html = `
         <div style="font-family: 'Inter', sans-serif; color: #1E293B; line-height: 1.6; max-width: 800px; margin: auto; padding: 20px;">
           <div style="text-align: center; border-bottom: 2px solid #3B82F6; padding-bottom: 20px; margin-bottom: 30px;">
-            <h1 style="color: #1E3A8A; margin: 0; font-size: 24px;">LEADFLOW SALES GROUP</h1>
+            <h1 style="color: #1E3A8A; margin: 0; font-size: 24px;">${hotelName.toUpperCase()}</h1>
             <p style="color: #64748B; margin: 5px 0 0 0; font-size: 14px;">Group Rooms & Event Agreement</p>
           </div>
 
@@ -1630,7 +1637,7 @@ export default function App() {
                 <td style="text-align: right; font-weight: bold; color: #1E293B;">$${totalRoomsRev.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
               </tr>
               <tr>
-                <td style="color: #475569;">Guest Room Taxes (15%):</td>
+                <td style="color: #475569;">Guest Room Occupancy Taxes (${roomTaxPct}%):</td>
                 <td style="text-align: right; font-weight: bold; color: #E11D48;">$${guestRoomsTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
               </tr>
               ${parsed.eventRoom ? `
@@ -1639,11 +1646,11 @@ export default function App() {
                 <td style="text-align: right; font-weight: bold; color: #1E293B;">$${eventRate.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
               </tr>
               <tr>
-                <td style="color: #475569;">Event Space Tax (6%):</td>
+                <td style="color: #475569;">Event Space Tax (${eventTaxPct}%):</td>
                 <td style="text-align: right; font-weight: bold; color: #E11D48;">$${eventTax.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
               </tr>
               <tr>
-                <td style="color: #475569;">Event Space Gratuity (20%):</td>
+                <td style="color: #475569;">Event Space Gratuity & Service Charge (${eventGratuityPct}%):</td>
                 <td style="text-align: right; font-weight: bold; color: #E11D48;">$${eventGratuity.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
               </tr>` : ''}
               ${parsed.accessories && parsed.accessories.length > 0 ? `
@@ -4882,18 +4889,71 @@ export default function App() {
 
                 {activeSettingsTab === 'global' && (
                   <div className="max-w-2xl space-y-6">
-                    <h4 className="text-lg font-medium text-slate-900">Global Variables</h4>
-                    <p className="text-sm text-slate-500">Configure default values used across the application.</p>
-                    <div className="grid gap-4">
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Tax Rate (%)</label>
-                        <input type="number" className="w-full border border-slate-300 rounded-md p-2 text-sm" value={globalTaxRate} onChange={e => setGlobalTaxRate(e.target.value)} />
+                    <div>
+                      <h4 className="text-lg font-semibold text-slate-900">Global Financial Variables</h4>
+                      <p className="text-sm text-slate-500">Configure your property&apos;s standard tax rates, lodging levies, and banquet service charges.</p>
+                    </div>
+
+                    <div className="grid gap-5">
+                      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-1">
+                        <label className="block text-xs font-semibold text-slate-800">
+                          🏨 Guest Room Occupancy Tax Rate (%)
+                        </label>
+                        <p className="text-[11px] text-slate-500">Standard state/city occupancy lodging tax applied to all guest room night revenue.</p>
+                        <div className="pt-2">
+                          <input 
+                            type="number" 
+                            step="0.1" 
+                            className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 outline-none" 
+                            value={roomTaxRate} 
+                            onChange={e => setRoomTaxRate(e.target.value)} 
+                            placeholder="15.0"
+                          />
+                        </div>
                       </div>
-                      <div>
-                        <label className="block text-sm font-medium text-slate-700 mb-1">Gratuity / Service Charge (%)</label>
-                        <input type="number" className="w-full border border-slate-300 rounded-md p-2 text-sm" value={globalGratuity} onChange={e => setGlobalGratuity(e.target.value)} />
+
+                      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-1">
+                        <label className="block text-xs font-semibold text-slate-800">
+                          🏢 Event Space Sales Tax Rate (%)
+                        </label>
+                        <p className="text-[11px] text-slate-500">Sales tax applied to meeting rooms, banquet hall rentals, and venue fees.</p>
+                        <div className="pt-2">
+                          <input 
+                            type="number" 
+                            step="0.1" 
+                            className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 outline-none" 
+                            value={eventTaxRate} 
+                            onChange={e => setEventTaxRate(e.target.value)} 
+                            placeholder="6.0"
+                          />
+                        </div>
                       </div>
-                      <button onClick={handleSaveGlobalVars} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 w-max">Save Changes</button>
+
+                      <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-1">
+                        <label className="block text-xs font-semibold text-slate-800">
+                          🍽️ Event Space Gratuity & Service Charge (%)
+                        </label>
+                        <p className="text-[11px] text-slate-500">Service charge and gratuity applied to function spaces, banquet setups, and catering.</p>
+                        <div className="pt-2">
+                          <input 
+                            type="number" 
+                            step="0.1" 
+                            className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 outline-none" 
+                            value={eventGratuityRate} 
+                            onChange={e => setEventGratuityRate(e.target.value)} 
+                            placeholder="20.0"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end pt-2">
+                        <button 
+                          onClick={handleSaveGlobalVars} 
+                          className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 transition-colors shadow-xs"
+                        >
+                          Save Financial Variables
+                        </button>
+                      </div>
                     </div>
                   </div>
                 )}
