@@ -1281,73 +1281,6 @@ export default function App() {
     }
   };
 
-  const handleGenerateInsights = async () => {
-    setIsGeneratingInsights(true);
-    setAiInsights(null);
-    try {
-      const res = await fetch('/api/analytics/insights', { method: 'POST' });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to generate insights');
-      setAiInsights(data.insights);
-      setSuccessMsg('Pipeline analysis generated!');
-    } catch (err: any) {
-      setErrorMsg(err.message || 'Error generating insights.');
-    } finally {
-      setIsGeneratingInsights(false);
-    }
-  };
-
-  const handleDownloadCSV = () => {
-    if (!leads || leads.length === 0) {
-      setErrorMsg('No leads available to export.');
-      return;
-    }
-
-    const headers = [
-      'Lead ID',
-      'Client Name',
-      'Email',
-      'Phone',
-      'Status',
-      'Lead Source',
-      'Market Segment',
-      'Check-In Date',
-      'Check-Out Date',
-      'Revenue Potential ($)',
-      'Assigned Manager ID',
-      'Reason Lost',
-      'Created At'
-    ];
-
-    const rows = filteredLeads.map((lead) => [
-      lead.id,
-      `"${(lead.name_company || '').replace(/"/g, '""')}"`,
-      `"${(lead.email || '').replace(/"/g, '""')}"`,
-      `"${(lead.phone || '').replace(/"/g, '""')}"`,
-      lead.status,
-      lead.lead_source,
-      lead.market_segment,
-      lead.check_in_date,
-      lead.check_out_date,
-      lead.revenue_potential,
-      lead.assigned_sales_manager_id,
-      `"${(lead.lost_reason || '').replace(/"/g, '""')}"`,
-      lead.created_at
-    ]);
-
-    const csvContent = [headers.join(','), ...rows.map((row) => row.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `Leadflow_Analytics_Report_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-    setSuccessMsg('Analytics CSV report downloaded successfully!');
-  };
-
   const getInitials = (name: string) => {
     if (!name) return '??';
     const parts = name.split(' ');
@@ -1438,6 +1371,83 @@ export default function App() {
   const totalActivePipelineValue = Object.entries(pipelineValueByStage)
     .filter(([stage]) => stage !== 'lost')
     .reduce((sum, [_, val]) => sum + val, 0);
+
+  const handleGenerateInsights = async () => {
+    setIsGeneratingInsights(true);
+    try {
+      const statsPayload = {
+        totalPipelineValue: totalActivePipelineValue,
+        totalLeads: filteredLeads.length,
+        confirmedLeads: filteredLeads.filter((l) => l.status === 'confirmed').length,
+        conversionRate: analytics?.conversionRate || (filteredLeads.length > 0 ? ((filteredLeads.filter((l) => l.status === 'confirmed').length / filteredLeads.length) * 100).toFixed(1) : 0),
+        confirmedRevBySegment,
+        pipelineValueByStage,
+        corporateCount,
+        leisureCount,
+        groupCount
+      };
+
+      const res = await fetch('/api/analytics/insights', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stats: statsPayload })
+      });
+
+      const data = await res.json();
+      if (!res.ok || data.error) {
+        throw new Error(data.error || 'Failed to generate insights');
+      }
+
+      setAiInsights(data.insights || 'No insights generated.');
+      setSuccessMsg('AI Weekly Executive Insights generated successfully!');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Could not generate weekly insights.');
+    } finally {
+      setIsGeneratingInsights(false);
+    }
+  };
+
+  const handleDownloadCSV = () => {
+    if (!filteredLeads || filteredLeads.length === 0) {
+      setErrorMsg('No leads available to export.');
+      return;
+    }
+    const headers = [
+      'Lead / Company',
+      'Email',
+      'Phone',
+      'Status',
+      'Segment',
+      'Est. Revenue',
+      'Check In',
+      'Check Out',
+      'Rooms / Event Details',
+      'Source'
+    ];
+    const rows = filteredLeads.map((l) => [
+      `"${(l.name_company || '').replace(/"/g, '""')}"`,
+      `"${(l.email || '').replace(/"/g, '""')}"`,
+      `"${(l.phone || '').replace(/"/g, '""')}"`,
+      `"${(l.status || '').replace(/"/g, '""')}"`,
+      `"${(l.market_segment || '').replace(/"/g, '""')}"`,
+      l.revenue_potential || '0',
+      l.check_in_date || '',
+      l.check_out_date || '',
+      `"${(l.rooms_or_event_details || '').replace(/"/g, '""')}"`,
+      `"${(l.lead_source || '').replace(/"/g, '""')}"`
+    ]);
+
+    const csvContent = [headers.join(','), ...rows.map((e) => e.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', `leadflow-pipeline-report-${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    setSuccessMsg('Pipeline CSV report downloaded successfully!');
+  };
 
   if (authLoading) {
     return (
