@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef } from 'react';
-import { CalendarDays } from 'lucide-react';
+import { CalendarDays, Flame, Zap, Sparkles, Calendar } from 'lucide-react';
 import { Lead } from '@/types/crm';
 import { getLeadBookingType } from '@/lib/calculations';
 
@@ -54,22 +54,53 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Fully scrollable calendar year (Jan 1 to Dec 31 of current year)
-  const getCalendarDays = () => {
+  // Group the full year into 12 months with calculated demand & appointment stats
+  const getMonthsData = () => {
     const currentYear = new Date().getFullYear();
-    const start = new Date(currentYear, 0, 1); // Jan 1
-    const end = new Date(currentYear, 11, 31); // Dec 31
+    const months = [];
 
-    const dates: Date[] = [];
-    const curr = new Date(start);
-    while (curr <= end) {
-      dates.push(new Date(curr));
-      curr.setDate(curr.getDate() + 1);
+    for (let monthIdx = 0; monthIdx < 12; monthIdx++) {
+      const monthDate = new Date(currentYear, monthIdx, 1);
+      const monthName = monthDate.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+      const lastDay = new Date(currentYear, monthIdx + 1, 0).getDate();
+
+      const days: Date[] = [];
+      let monthTotalLeads = 0;
+      let monthTotalRev = 0;
+      let monthTotalAppts = 0;
+
+      for (let d = 1; d <= lastDay; d++) {
+        const dateObj = new Date(currentYear, monthIdx, d);
+        days.push(dateObj);
+
+        const mStr = String(monthIdx + 1).padStart(2, '0');
+        const dStr = String(d).padStart(2, '0');
+        const dateKey = `${currentYear}-${mStr}-${dStr}`;
+
+        const dayData = heatmap?.[dateKey];
+        if (dayData) {
+          monthTotalLeads += dayData.count || 0;
+          monthTotalRev += dayData.revenue || 0;
+        }
+
+        const appts = (liveAppointments || []).filter((apt: any) => apt.appointment_date === dateKey);
+        monthTotalAppts += appts.length;
+      }
+
+      months.push({
+        monthIdx,
+        monthName,
+        days,
+        totalLeads: monthTotalLeads,
+        totalRev: monthTotalRev,
+        totalAppts: monthTotalAppts
+      });
     }
-    return dates;
+
+    return months;
   };
 
-  const calendarDays = getCalendarDays();
+  const monthsData = getMonthsData();
 
   // Auto-scroll directly to today on mount and view mode switch
   useEffect(() => {
@@ -92,7 +123,8 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   return (
     <div className="h-full flex flex-col animate-fadeIn overflow-hidden">
       <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col overflow-hidden">
-        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 shrink-0">
+        {/* Header with Title, Heat Legend & View Toggle */}
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 shrink-0 pb-4 border-b border-slate-100">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <CalendarDays className="h-5 w-5 text-blue-600" />
@@ -102,20 +134,28 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             </div>
             <p className="text-xs text-slate-500">
               {calendarViewMode === 'demand'
-                ? 'Annual demand intelligence showing inquiry compression and requested stay dates across all active leads.'
-                : 'Annual scheduled client tours, phone calls, and virtual meetings. Hover over days to view and edit appointment logs.'}
+                ? 'Thermal demand intelligence showing peak inquiry compression, hot dates, and potential revenue across the full year.'
+                : 'Annual schedule for client site walkthroughs, phone calls, and virtual presentations.'}
             </p>
           </div>
 
-          {/* Demand Legend (in Demand Mode) & Quick Jump / View Toggle */}
+          {/* Thermal Demand Legend & Navigation Controls */}
           <div className="flex flex-wrap items-center gap-2.5">
             {calendarViewMode === 'demand' && (
-              <div className="hidden sm:flex items-center gap-2.5 text-[11px] text-slate-500 font-medium bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
-                <span className="font-bold text-slate-700 text-xs">Demand:</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-white border border-slate-300"></span> Open</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-blue-100 border border-blue-300"></span> 1 Lead</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-blue-200 border border-blue-400"></span> 2-3 Moderate</span>
-                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-indigo-200 border border-indigo-400"></span> 4+ High</span>
+              <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-600 font-medium bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
+                <span className="font-bold text-slate-700 text-xs mr-0.5">Heat Scale:</span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded bg-white border border-slate-300"></span> Open
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded bg-emerald-100 border border-emerald-300"></span> 1 Light
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded bg-amber-200 border border-amber-400"></span> 2–3 Warm
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-2.5 h-2.5 rounded bg-rose-300 border border-rose-500"></span> 4+ 🔥 Hot / Peak
+                </span>
               </div>
             )}
 
@@ -129,11 +169,13 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <span>Today</span>
             </button>
 
-            <div className="flex bg-white p-1 rounded-lg border border-slate-200 text-xs shrink-0">
+            <div className="flex bg-slate-100 p-1 rounded-lg border border-slate-200 text-xs shrink-0">
               <button
                 onClick={() => setCalendarViewMode('demand')}
                 className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
-                  calendarViewMode === 'demand' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-800'
+                  calendarViewMode === 'demand'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Demand Heatmap
@@ -141,7 +183,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
               <button
                 onClick={() => setCalendarViewMode('appointments')}
                 className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
-                  calendarViewMode === 'appointments' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-800'
+                  calendarViewMode === 'appointments'
+                    ? 'bg-blue-600 text-white shadow'
+                    : 'text-slate-600 hover:text-slate-900'
                 }`}
               >
                 Appointments
@@ -150,254 +194,344 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
           </div>
         </div>
 
-        {/* Calendar Grid (Full Year Scrollable) */}
-        {calendarDays.length === 0 ? (
-          <div className="py-8 text-center text-slate-500 text-xs">
-            Please select a valid date range to view calendar data.
-          </div>
-        ) : (
-          <div ref={containerRef} className="flex-1 overflow-y-auto pr-2 scrollbar-thin scroll-smooth">
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
-              {calendarDays.map((targetDate, idx) => {
-                const y = targetDate.getFullYear();
-                const m = String(targetDate.getMonth() + 1).padStart(2, '0');
-                const d = String(targetDate.getDate()).padStart(2, '0');
-                const dateStr = `${y}-${m}-${d}`;
-                const dayLabel = targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-                const weekdayLabel = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
-                const isToday = dateStr === todayStr;
+        {/* Scrollable Months Container */}
+        <div ref={containerRef} className="flex-1 overflow-y-auto pr-2 scrollbar-thin scroll-smooth space-y-8">
+          {monthsData.map((month) => {
+            // Determine Monthly Heat Tier
+            const isHotMonth = month.totalLeads >= 5;
+            const isWarmMonth = month.totalLeads >= 2 && month.totalLeads < 5;
+            const isLightMonth = month.totalLeads === 1;
 
-                if (calendarViewMode === 'demand') {
-                  const dayData = heatmap?.[dateStr];
-                  const count = dayData?.count || 0;
-                  const revenue = dayData?.revenue || 0;
-                  const hasDemand = count > 0;
+            return (
+              <div key={month.monthIdx} className="space-y-3">
+                {/* Month Summary Banner */}
+                <div className="sticky top-0 z-20 bg-slate-50/95 backdrop-blur-md px-4 py-2.5 rounded-xl border border-slate-200 shadow-2xs flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
+                  <div className="flex items-center gap-2">
+                    <Calendar className="h-4 w-4 text-slate-600" />
+                    <h4 className="font-extrabold text-sm text-slate-800 tracking-tight">{month.monthName}</h4>
+                  </div>
 
-                  // Shade color based on count
-                  let shadeClass = 'bg-white border-slate-200 text-slate-400';
-                  if (count > 0 && count <= 1) shadeClass = 'bg-blue-50/70 border-blue-200 text-blue-800 font-semibold shadow-xs';
-                  else if (count > 1 && count <= 3)
-                    shadeClass = 'bg-blue-100/70 border-blue-300 text-blue-900 font-semibold shadow-xs';
-                  else if (count > 3) shadeClass = 'bg-indigo-100/80 border-indigo-300 text-indigo-900 font-bold shadow-xs';
+                  {calendarViewMode === 'demand' ? (
+                    <div className="flex items-center gap-2.5">
+                      {month.totalLeads > 0 ? (
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs font-semibold text-slate-600">
+                            {month.totalLeads} Total Inquir{month.totalLeads > 1 ? 'ies' : 'y'} •{' '}
+                            <span className="text-emerald-600 font-bold">
+                              ${Math.round(month.totalRev).toLocaleString()}
+                            </span>
+                          </span>
 
-                  return (
-                    <div
-                      key={idx}
-                      id={isToday ? 'calendar-today' : undefined}
-                      onClick={() => {
-                        if (hasDemand && dayData?.leads && dayData.leads.length > 0) {
-                          if (dayData.leads.length === 1) {
-                            const fullLead = leads.find((l) => l.id === dayData.leads[0].id);
-                            if (fullLead) {
-                              setSelectedLead(fullLead);
-                            } else {
-                              setSelectedDayLeads(dayData.leads);
-                              setSelectedCalendarDate(dateStr);
-                              setIsDayLeadsModalOpen(true);
-                            }
-                          } else {
-                            setSelectedDayLeads(dayData.leads);
-                            setSelectedCalendarDate(dateStr);
-                            setIsDayLeadsModalOpen(true);
-                          }
-                        }
-                      }}
-                      className={`group relative p-3 rounded-lg border text-sm min-h-[95px] flex flex-col justify-between transition-all ${
-                        isToday ? 'ring-2 ring-blue-500 border-blue-500 bg-blue-50/20' : ''
-                      } ${
-                        hasDemand
-                          ? 'cursor-pointer hover:border-blue-400 hover:shadow-md'
-                          : 'cursor-default opacity-85'
-                      } ${shadeClass}`}
-                    >
-                      <div className="flex justify-between items-center opacity-80">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-[11px] text-slate-800">{dayLabel}</span>
-                          {isToday && (
-                            <span className="text-[8px] font-black uppercase tracking-wider px-1 py-0.2 rounded bg-blue-600 text-white">
-                              Today
+                          {isHotMonth && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1 shadow-2xs">
+                              <Flame className="h-3 w-3 text-rose-600 fill-rose-500 animate-pulse" />
+                              HOT MONTH
                             </span>
                           )}
-                        </div>
-                        <span className="text-[9px] font-medium tracking-wide uppercase">{weekdayLabel}</span>
-                      </div>
-
-                      {hasDemand ? (
-                        <div className="text-left mt-2 space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-bold block text-slate-800">
-                              {count} Lead{count > 1 ? 's' : ''}
+                          {isWarmMonth && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
+                              <Zap className="h-3 w-3 text-amber-600 fill-amber-500" />
+                              WARM DEMAND
                             </span>
-                            <span className="text-[9px] font-semibold text-emerald-600">
-                              ${Math.round(revenue).toLocaleString()}
+                          )}
+                          {isLightMonth && (
+                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
+                              Building Demand
                             </span>
-                          </div>
-
-                          {/* Booking Type Badges on Card */}
-                          <div className="flex flex-wrap gap-1 mt-1">
-                            {(() => {
-                              const dayLeadsList = dayData?.leads || [];
-                              const types = dayLeadsList.map((l: any) =>
-                                getLeadBookingType(l.rooms_or_event_details)
-                              );
-                              const hasBoth = types.some((t: any) => t.type === 'both');
-                              const hasEvent = types.some((t: any) => t.type === 'event' || t.type === 'both');
-                              const hasStay = types.some((t: any) => t.type === 'stay_block' || t.type === 'both');
-
-                              return (
-                                <>
-                                  {hasBoth ? (
-                                    <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200">
-                                      ✨ Both
-                                    </span>
-                                  ) : (
-                                    <>
-                                      {hasEvent && (
-                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
-                                          🏢 Event
-                                        </span>
-                                      )}
-                                      {hasStay && (
-                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200">
-                                          🛏️ Stay Block
-                                        </span>
-                                      )}
-                                    </>
-                                  )}
-                                </>
-                              );
-                            })()}
-                          </div>
+                          )}
                         </div>
                       ) : (
-                        <div className="flex items-center gap-1 text-[10px] text-slate-300 font-medium self-start mt-2">
-                          <span className="w-1.5 h-1.5 rounded-full bg-slate-200"></span>
-                          <span>Open</span>
-                        </div>
-                      )}
-
-                      {/* Hover Popover Tooltip */}
-                      {hasDemand && (
-                        <div className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 bg-slate-900 text-white rounded-xl p-3 shadow-2xl z-50 pointer-events-none text-xs border border-slate-700 animate-in fade-in zoom-in-95 duration-150">
-                          <div className="font-bold border-b border-slate-700 pb-1.5 mb-2 flex justify-between items-center text-slate-200">
-                            <span>{dayLabel} Leads</span>
-                            <span className="text-emerald-400 text-[11px]">
-                              ${Math.round(revenue).toLocaleString()}
-                            </span>
-                          </div>
-                          <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
-                            {(dayData?.leads || []).map((lead: any, lIdx: number) => {
-                              const bType = getLeadBookingType(lead.rooms_or_event_details);
-                              return (
-                                <div
-                                  key={lIdx}
-                                  className="bg-slate-800/90 p-2 rounded-lg text-[10px] space-y-1 border border-slate-700"
-                                >
-                                  <div className="flex justify-between items-center">
-                                    <span className="font-bold text-white truncate max-w-[120px]">
-                                      {lead.name_company}
-                                    </span>
-                                    <span className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${bType.badgeClass}`}>
-                                      {bType.icon} {bType.shortLabel}
-                                    </span>
-                                  </div>
-                                  <div className="flex justify-between text-slate-400">
-                                    <span className="capitalize">{lead.status.replace('_', ' ')}</span>
-                                    <span className="font-semibold text-emerald-400">
-                                      ${parseFloat(lead.revenue || '0').toLocaleString()}
-                                    </span>
-                                  </div>
-                                </div>
-                              );
-                            })}
-                          </div>
-                          <div className="text-[9px] text-sky-400 font-medium text-center mt-2 border-t border-slate-800 pt-1">
-                            Click to view lead details
-                          </div>
-                        </div>
+                        <span className="text-xs text-slate-400 font-medium">Open Capacity • 0 Inquiries</span>
                       )}
                     </div>
-                  );
-                } else {
-                  // Appointments View (Grid Mode)
-                  const dayAppointments = liveAppointments.filter((apt: any) => apt.appointment_date === dateStr);
-                  const hasAppointments = dayAppointments.length > 0;
-                  const shadeClass = hasAppointments ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200';
+                  ) : (
+                    <div className="text-xs font-semibold text-slate-600">
+                      {month.totalAppts > 0 ? (
+                        <span className="text-blue-700 font-bold bg-blue-50 px-2 py-0.5 rounded-full border border-blue-200">
+                          {month.totalAppts} Scheduled Meeting{month.totalAppts > 1 ? 's' : ''}
+                        </span>
+                      ) : (
+                        <span className="text-slate-400">No scheduled meetings</span>
+                      )}
+                    </div>
+                  )}
+                </div>
 
-                  return (
-                    <div
-                      key={idx}
-                      id={isToday ? 'calendar-today' : undefined}
-                      onClick={() => {
-                        if (dateStr >= todayStr) {
-                          setQuickBookDate(dateStr);
-                          setIsQuickBookingOpen(true);
-                        }
-                      }}
-                      className={`p-3 rounded-lg border text-sm min-h-[85px] flex flex-col transition-all shadow-sm ${
-                        isToday ? 'ring-2 ring-blue-500 border-blue-500' : ''
-                      } ${
-                        dateStr >= todayStr
-                          ? 'cursor-pointer hover:border-blue-300 hover:shadow-md ' + shadeClass
-                          : 'cursor-not-allowed opacity-60 bg-slate-50'
-                      }`}
-                    >
-                      <div
-                        className={`flex justify-between items-center mb-2 ${
-                          hasAppointments ? 'text-blue-700 font-bold' : 'text-slate-400'
-                        }`}
-                      >
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-[11px] text-slate-800">{dayLabel}</span>
-                          {isToday && (
-                            <span className="text-[8px] font-black uppercase tracking-wider px-1 py-0.2 rounded bg-blue-600 text-white">
-                              Today
-                            </span>
-                          )}
-                        </div>
-                        <span className="text-[9px] font-medium tracking-wide uppercase">{weekdayLabel}</span>
-                      </div>
+                {/* Days Grid */}
+                <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+                  {month.days.map((targetDate, idx) => {
+                    const y = targetDate.getFullYear();
+                    const m = String(targetDate.getMonth() + 1).padStart(2, '0');
+                    const d = String(targetDate.getDate()).padStart(2, '0');
+                    const dateStr = `${y}-${m}-${d}`;
+                    const dayLabel = targetDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    const weekdayLabel = targetDate.toLocaleDateString('en-US', { weekday: 'short' });
+                    const isToday = dateStr === todayStr;
 
-                      <div className="flex-1 flex flex-col gap-2">
-                        {hasAppointments ? (
-                          dayAppointments.map((apt: any) => (
-                            <div
-                              key={apt.id}
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setActiveAppointment(apt);
-                                setEditApptDate(apt.appointment_date);
-                                setEditApptTime(apt.appointment_time);
-                                setEditApptType(apt.type);
-                                setEditApptAgentId(apt.agent_id || '1');
-                                setIsEditingAppointment(false);
-                              }}
-                              className="bg-white rounded border border-blue-100 p-2 text-[10px] shadow-sm cursor-pointer hover:bg-blue-50/50 hover:border-blue-200 transition-all text-left"
-                            >
-                              <div className="flex items-center gap-1.5 font-bold text-blue-800 mb-0.5">
-                                <span>{apt.type === 'Site Tour' ? '📍' : apt.type === 'Zoom Meeting' ? '💻' : '📞'}</span>
-                                <span>{apt.appointment_time}</span>
+                    if (calendarViewMode === 'demand') {
+                      const dayData = heatmap?.[dateStr];
+                      const count = dayData?.count || 0;
+                      const revenue = dayData?.revenue || 0;
+                      const hasDemand = count > 0;
+
+                      // Determine True Thermal Heat Category
+                      const isPeak = count >= 4 || revenue >= 15000;
+                      const isWarm = (count >= 2 && count <= 3) || revenue >= 5000;
+                      const isLight = count === 1;
+
+                      let heatCardClass = 'bg-white border-slate-200 text-slate-400';
+                      let headerDayColor = 'text-slate-800';
+
+                      if (isPeak) {
+                        heatCardClass =
+                          'bg-gradient-to-br from-rose-50 via-orange-50/80 to-rose-50 border-rose-300 text-rose-950 shadow-xs hover:border-rose-400';
+                        headerDayColor = 'text-rose-950 font-black';
+                      } else if (isWarm) {
+                        heatCardClass =
+                          'bg-gradient-to-br from-amber-50 via-orange-50/50 to-amber-50 border-amber-300 text-amber-950 shadow-2xs hover:border-amber-400';
+                        headerDayColor = 'text-amber-950 font-bold';
+                      } else if (isLight) {
+                        heatCardClass = 'bg-emerald-50/70 border-emerald-200 text-emerald-950 hover:border-emerald-300';
+                        headerDayColor = 'text-emerald-950 font-bold';
+                      }
+
+                      return (
+                        <div
+                          key={idx}
+                          id={isToday ? 'calendar-today' : undefined}
+                          onClick={() => {
+                            if (hasDemand && dayData?.leads && dayData.leads.length > 0) {
+                              if (dayData.leads.length === 1) {
+                                const fullLead = leads.find((l) => l.id === dayData.leads[0].id);
+                                if (fullLead) {
+                                  setSelectedLead(fullLead);
+                                } else {
+                                  setSelectedDayLeads(dayData.leads);
+                                  setSelectedCalendarDate(dateStr);
+                                  setIsDayLeadsModalOpen(true);
+                                }
+                              } else {
+                                setSelectedDayLeads(dayData.leads);
+                                setSelectedCalendarDate(dateStr);
+                                setIsDayLeadsModalOpen(true);
+                              }
+                            }
+                          }}
+                          className={`group relative p-3 rounded-lg border text-sm min-h-[95px] flex flex-col justify-between transition-all ${
+                            isToday ? 'ring-2 ring-blue-600 border-blue-600 bg-blue-50/30' : ''
+                          } ${
+                            hasDemand
+                              ? 'cursor-pointer hover:shadow-md hover:scale-[1.01]'
+                              : 'cursor-default opacity-85'
+                          } ${heatCardClass}`}
+                        >
+                          <div className="flex justify-between items-center opacity-85">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`font-bold text-[11px] ${headerDayColor}`}>{dayLabel}</span>
+                              {isToday && (
+                                <span className="text-[8px] font-black uppercase tracking-wider px-1 py-0.2 rounded bg-blue-600 text-white shadow-2xs">
+                                  Today
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[9px] font-medium tracking-wide uppercase">{weekdayLabel}</span>
+                          </div>
+
+                          {hasDemand ? (
+                            <div className="text-left mt-2 space-y-1">
+                              <div className="flex items-center justify-between">
+                                <div className="flex items-center gap-1">
+                                  {isPeak && <Flame className="h-3 w-3 text-rose-600 fill-rose-500" />}
+                                  {isWarm && <Zap className="h-3 w-3 text-amber-600 fill-amber-500" />}
+                                  <span className="text-[10px] font-bold block text-slate-900">
+                                    {count} Lead{count > 1 ? 's' : ''}
+                                  </span>
+                                </div>
+                                <span
+                                  className={`text-[9px] font-extrabold ${
+                                    isPeak ? 'text-rose-700' : isWarm ? 'text-amber-700' : 'text-emerald-700'
+                                  }`}
+                                >
+                                  ${Math.round(revenue).toLocaleString()}
+                                </span>
                               </div>
-                              <div className="text-slate-700 font-medium truncate">
-                                {apt.leads?.name_company || 'Unknown Lead'}
-                              </div>
-                              <div className="text-slate-500 truncate mt-0.5">
-                                Host: {apt.users?.name || 'Unassigned'}
+
+                              {/* Booking Type Badges */}
+                              <div className="flex flex-wrap gap-1 mt-1">
+                                {(() => {
+                                  const dayLeadsList = dayData?.leads || [];
+                                  const types = dayLeadsList.map((l: any) =>
+                                    getLeadBookingType(l.rooms_or_event_details)
+                                  );
+                                  const hasBoth = types.some((t: any) => t.type === 'both');
+                                  const hasEvent = types.some((t: any) => t.type === 'event' || t.type === 'both');
+                                  const hasStay = types.some((t: any) => t.type === 'stay_block' || t.type === 'both');
+
+                                  return (
+                                    <>
+                                      {hasBoth ? (
+                                        <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-purple-100 text-purple-800 border border-purple-200">
+                                          ✨ Both
+                                        </span>
+                                      ) : (
+                                        <>
+                                          {hasEvent && (
+                                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-amber-100 text-amber-800 border border-amber-200">
+                                              🏢 Event
+                                            </span>
+                                          )}
+                                          {hasStay && (
+                                            <span className="text-[9px] font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-800 border border-blue-200">
+                                              🛏️ Stay Block
+                                            </span>
+                                          )}
+                                        </>
+                                      )}
+                                    </>
+                                  );
+                                })()}
                               </div>
                             </div>
-                          ))
-                        ) : (
-                          <div className="text-[9px] text-slate-400 mt-1">No appointments</div>
-                        )}
-                      </div>
-                    </div>
-                  );
-                }
-              })}
-            </div>
-          </div>
-        )}
+                          ) : (
+                            <div className="flex items-center gap-1 text-[10px] text-slate-300 font-medium self-start mt-2">
+                              <span className="w-1.5 h-1.5 rounded-full bg-slate-200"></span>
+                              <span>Open</span>
+                            </div>
+                          )}
+
+                          {/* Hover Popover Tooltip */}
+                          {hasDemand && (
+                            <div className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 bg-slate-900 text-white rounded-xl p-3 shadow-2xl z-50 pointer-events-none text-xs border border-slate-700 animate-in fade-in zoom-in-95 duration-150">
+                              <div className="font-bold border-b border-slate-700 pb-1.5 mb-2 flex justify-between items-center text-slate-200">
+                                <span className="flex items-center gap-1">
+                                  {isPeak ? '🔥' : isWarm ? '⚡' : '🌱'} {dayLabel} Demand
+                                </span>
+                                <span className="text-emerald-400 text-[11px] font-bold">
+                                  ${Math.round(revenue).toLocaleString()}
+                                </span>
+                              </div>
+                              <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+                                {(dayData?.leads || []).map((lead: any, lIdx: number) => {
+                                  const bType = getLeadBookingType(lead.rooms_or_event_details);
+                                  return (
+                                    <div
+                                      key={lIdx}
+                                      className="bg-slate-800/90 p-2 rounded-lg text-[10px] space-y-1 border border-slate-700"
+                                    >
+                                      <div className="flex justify-between items-center">
+                                        <span className="font-bold text-white truncate max-w-[120px]">
+                                          {lead.name_company}
+                                        </span>
+                                        <span
+                                          className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${bType.badgeClass}`}
+                                        >
+                                          {bType.icon} {bType.shortLabel}
+                                        </span>
+                                      </div>
+                                      <div className="flex justify-between text-slate-400">
+                                        <span className="capitalize">{lead.status.replace('_', ' ')}</span>
+                                        <span className="font-semibold text-emerald-400">
+                                          ${parseFloat(lead.revenue || '0').toLocaleString()}
+                                        </span>
+                                      </div>
+                                    </div>
+                                  );
+                                })}
+                              </div>
+                              <div className="text-[9px] text-sky-400 font-medium text-center mt-2 border-t border-slate-800 pt-1">
+                                Click to view lead details
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    } else {
+                      // Appointments View
+                      const dayAppointments = (liveAppointments || []).filter(
+                        (apt: any) => apt.appointment_date === dateStr
+                      );
+                      const hasAppointments = dayAppointments.length > 0;
+                      const shadeClass = hasAppointments ? 'bg-blue-50 border-blue-200' : 'bg-white border-slate-200';
+
+                      return (
+                        <div
+                          key={idx}
+                          id={isToday ? 'calendar-today' : undefined}
+                          onClick={() => {
+                            if (dateStr >= todayStr) {
+                              setQuickBookDate(dateStr);
+                              setIsQuickBookingOpen(true);
+                            }
+                          }}
+                          className={`p-3 rounded-lg border text-sm min-h-[85px] flex flex-col transition-all shadow-sm ${
+                            isToday ? 'ring-2 ring-blue-600 border-blue-600' : ''
+                          } ${
+                            dateStr >= todayStr
+                              ? 'cursor-pointer hover:border-blue-300 hover:shadow-md ' + shadeClass
+                              : 'cursor-not-allowed opacity-60 bg-slate-50'
+                          }`}
+                        >
+                          <div
+                            className={`flex justify-between items-center mb-2 ${
+                              hasAppointments ? 'text-blue-700 font-bold' : 'text-slate-400'
+                            }`}
+                          >
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-bold text-[11px] text-slate-800">{dayLabel}</span>
+                              {isToday && (
+                                <span className="text-[8px] font-black uppercase tracking-wider px-1 py-0.2 rounded bg-blue-600 text-white">
+                                  Today
+                                </span>
+                              )}
+                            </div>
+                            <span className="text-[9px] font-medium tracking-wide uppercase">{weekdayLabel}</span>
+                          </div>
+
+                          <div className="flex-1 flex flex-col gap-2">
+                            {hasAppointments ? (
+                              dayAppointments.map((apt: any) => (
+                                <div
+                                  key={apt.id}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setActiveAppointment(apt);
+                                    setEditApptDate(apt.appointment_date);
+                                    setEditApptTime(apt.appointment_time);
+                                    setEditApptType(apt.type);
+                                    setEditApptAgentId(apt.agent_id || '1');
+                                    setIsEditingAppointment(false);
+                                  }}
+                                  className="bg-white rounded border border-blue-100 p-2 text-[10px] shadow-sm cursor-pointer hover:bg-blue-50/50 hover:border-blue-200 transition-all text-left"
+                                >
+                                  <div className="flex items-center gap-1.5 font-bold text-blue-800 mb-0.5">
+                                    <span>
+                                      {apt.type === 'Site Tour' ? '📍' : apt.type === 'Zoom Meeting' ? '💻' : '📞'}
+                                    </span>
+                                    <span>{apt.appointment_time}</span>
+                                  </div>
+                                  <div className="text-slate-700 font-medium truncate">
+                                    {apt.leads?.name_company || 'Unknown Lead'}
+                                  </div>
+                                  <div className="text-slate-500 truncate mt-0.5">
+                                    Host: {apt.users?.name || 'Unassigned'}
+                                  </div>
+                                </div>
+                              ))
+                            ) : (
+                              <div className="text-[9px] text-slate-400 mt-1">No appointments</div>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    }
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
       </div>
     </div>
   );
 };
+
