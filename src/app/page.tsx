@@ -1556,6 +1556,10 @@ export default function App() {
                   heatmap={heatmap}
                   liveAppointments={liveAppointments}
                   setActiveAppointment={setActiveAppointment}
+                  onScheduleAppointment={() => {
+                    setQuickBookDate(todayStr);
+                    setIsQuickBookingOpen(true);
+                  }}
                 />
               )}
 

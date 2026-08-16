@@ -10,7 +10,8 @@ import {
   ArrowRight,
   Trash2,
   AlertTriangle,
-  CalendarDays
+  CalendarDays,
+  Plus
 } from 'lucide-react';
 import { Lead, User } from '@/types/crm';
 
@@ -58,6 +59,7 @@ interface DashboardViewProps {
   heatmap: any;
   liveAppointments: any[];
   setActiveAppointment: (apt: any) => void;
+  onScheduleAppointment?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -92,7 +94,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   formatRoomDetailsDisplay,
   heatmap,
   liveAppointments,
-  setActiveAppointment
+  setActiveAppointment,
+  onScheduleAppointment
 }) => {
   return (
     <div className="space-y-8 animate-fadeIn">
@@ -453,9 +456,21 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Upcoming Appointments Section */}
       <div className="mt-8 bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col min-h-[300px]">
-        <div className="flex items-center gap-2 mb-4">
-          <CalendarDays className="h-5 w-5 text-blue-600" />
-          <h3 className="font-bold text-slate-800 text-base">Upcoming Appointments</h3>
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <CalendarDays className="h-5 w-5 text-blue-600" />
+            <h3 className="font-bold text-slate-800 text-base">Upcoming Appointments</h3>
+          </div>
+          {onScheduleAppointment && (
+            <button
+              onClick={onScheduleAppointment}
+              className="flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-600 hover:text-white border border-blue-200 rounded-lg text-xs font-semibold transition-all shadow-xs active:scale-95 cursor-pointer"
+              title="Schedule a new appointment"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              <span>Schedule Appointment</span>
+            </button>
+          )}
         </div>
 
         <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
@@ -465,9 +480,18 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             if (upcoming.length === 0) {
               return (
-                <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-2 min-h-[150px]">
+                <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-3 min-h-[160px] py-4">
                   <CalendarDays className="h-8 w-8 text-slate-300" />
-                  <p className="text-sm">No upcoming appointments scheduled.</p>
+                  <p className="text-sm font-medium">No upcoming appointments scheduled.</p>
+                  {onScheduleAppointment && (
+                    <button
+                      onClick={onScheduleAppointment}
+                      className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-all shadow-sm active:scale-95 cursor-pointer"
+                    >
+                      <Plus className="h-4 w-4" />
+                      <span>Schedule First Appointment</span>
+                    </button>
+                  )}
                 </div>
               );
             }
