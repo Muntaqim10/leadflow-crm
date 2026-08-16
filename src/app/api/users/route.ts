@@ -3,8 +3,25 @@ import { getRows, getSupabaseClient } from '@/lib/db';
 
 export async function GET() {
   try {
-    const users = await getRows('users');
-    return NextResponse.json(users);
+    const supabase = await getSupabaseClient(true);
+    let authUsers: any[] = [];
+    if (supabase?.auth?.admin) {
+      try {
+        const { data } = await supabase.auth.admin.listUsers();
+        authUsers = data?.users || [];
+      } catch (e) {
+        console.warn('Could not list auth users:', e);
+      }
+    }
+    const dbUsers = await getRows('users');
+    const merged = dbUsers.map(u => {
+      const authU = authUsers.find((a: any) => a.id === u.id || a.email?.toLowerCase() === u.email?.toLowerCase() || a.user_metadata?.name === u.name);
+      return {
+        ...u,
+        email: authU?.email || u.email || `${u.name.toLowerCase().replace(/\s+/g, '.')}@leadflow.com`
+      };
+    });
+    return NextResponse.json(merged);
   } catch (error: any) {
     console.error('Failed to fetch users:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });

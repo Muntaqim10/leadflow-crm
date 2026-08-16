@@ -77,7 +77,6 @@ export async function POST(request: Request) {
       try {
         await serviceDb.from('users').upsert({
           id: userId,
-          email,
           name,
           role: defaultRole,
           created_at: new Date().toISOString(),
