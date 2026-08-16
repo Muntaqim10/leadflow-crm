@@ -484,7 +484,10 @@ export default function App() {
   // User Management State
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [newUserName, setNewUserName] = useState('');
+  const [newUserEmail, setNewUserEmail] = useState('');
+  const [newUserPassword, setNewUserPassword] = useState('');
   const [newUserRole, setNewUserRole] = useState('Sales Agent');
+  const [isSubmittingUser, setIsSubmittingUser] = useState(false);
 
   const [isEditUserModalOpen, setIsEditUserModalOpen] = useState(false);
   const [editingUserId, setEditingUserId] = useState('');
@@ -496,12 +499,58 @@ export default function App() {
   const handleSaveGlobalVars = () => setSuccessMsg('Global variables updated successfully!');
   const handleSaveHotelDetails = () => setSuccessMsg('Hotel details updated successfully!');
 
-  const handleAddUser = () => {
-    if (!newUserName.trim() || !newUserRole.trim()) return;
-    setIsAddUserModalOpen(false);
-    setNewUserName('');
-    setNewUserRole('Sales Agent');
-    setSuccessMsg('To add team members, have them sign up with their work email. You can then assign their role here!');
+  const handleAddUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newUserName.trim() || !newUserEmail.trim()) {
+      setErrorMsg('Name and Email are required.');
+      return;
+    }
+    setIsSubmittingUser(true);
+    try {
+      const res = await fetch('/api/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: newUserName.trim(),
+          email: newUserEmail.trim(),
+          role: newUserRole,
+          password: newUserPassword.trim() || undefined
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to create user');
+
+      mutate('/api/users');
+      setIsAddUserModalOpen(false);
+      setNewUserName('');
+      setNewUserEmail('');
+      setNewUserPassword('');
+      setNewUserRole('Sales Agent');
+      setSuccessMsg(`User created in Supabase! Temporary password: ${data.user?.temporaryPassword || 'Configured'}`);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to add user');
+    } finally {
+      setIsSubmittingUser(false);
+    }
+  };
+
+  const handleDeleteUser = async (user: User) => {
+    if (user.email?.toLowerCase() === currentUserEmail.toLowerCase() || user.id === session?.user?.id) {
+      setErrorMsg('You cannot delete your own active account.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to remove ${user.name} (${user.email || user.role}) from the workspace?`)) return;
+    try {
+      const res = await fetch(`/api/users?id=${user.id}`, { method: 'DELETE' });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to remove user');
+      }
+      mutate('/api/users');
+      setSuccessMsg(`User ${user.name} removed successfully.`);
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to delete user');
+    }
   };
 
   const handleEditUser = (user: User) => {
@@ -4802,33 +4851,52 @@ export default function App() {
                     <div className="flex items-center justify-between">
                       <div>
                         <h4 className="text-lg font-medium text-slate-900">User Management</h4>
-                        <p className="text-sm text-slate-500">Manage sales team members and their roles.</p>
+                        <p className="text-sm text-slate-500">Manage verified team members and their permission roles.</p>
                       </div>
-                      <button onClick={() => setIsAddUserModalOpen(true)} className="px-3 py-1.5 bg-slate-900 text-white rounded text-sm font-medium hover:bg-slate-800">
-                        + Add User
+                      <button onClick={() => setIsAddUserModalOpen(true)} className="px-3.5 py-2 bg-blue-600 text-white rounded-lg text-sm font-semibold hover:bg-blue-700 shadow-sm transition-colors flex items-center gap-1.5">
+                        <span>+</span> Add User
                       </button>
                     </div>
-                    <div className="border border-slate-200 rounded-lg overflow-hidden">
+                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs bg-white">
                       <table className="w-full text-left text-sm">
                         <thead className="bg-slate-50 border-b border-slate-200">
                           <tr>
-                            <th className="p-3 font-semibold text-slate-700">Name</th>
-                            <th className="p-3 font-semibold text-slate-700">Email</th>
-                            <th className="p-3 font-semibold text-slate-700">Role</th>
-                            <th className="p-3 font-semibold text-slate-700 text-right">Actions</th>
+                            <th className="p-3.5 font-semibold text-slate-700">Name</th>
+                            <th className="p-3.5 font-semibold text-slate-700">Email</th>
+                            <th className="p-3.5 font-semibold text-slate-700">Role</th>
+                            <th className="p-3.5 font-semibold text-slate-700 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
-                          {users.map(u => (
-                            <tr key={u.id} className="hover:bg-slate-50">
-                              <td className="p-3 font-medium text-slate-900">{u.name}</td>
-                              <td className="p-3 text-slate-600">{u.email}</td>
-                              <td className="p-3 text-slate-600">{u.role}</td>
-                              <td className="p-3 text-right">
-                                <button onClick={() => handleEditUser(u)} className="text-blue-600 hover:text-blue-800 font-medium">Edit</button>
+                          {users.length === 0 ? (
+                            <tr>
+                              <td colSpan={4} className="p-8 text-center text-slate-400">
+                                No registered team members found. Click &quot;+ Add User&quot; above to invite members or have them sign up.
                               </td>
                             </tr>
-                          ))}
+                          ) : (
+                            users.map(u => (
+                              <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                                <td className="p-3.5 font-semibold text-slate-900">{u.name}</td>
+                                <td className="p-3.5 text-slate-600 font-mono text-xs">{u.email || '—'}</td>
+                                <td className="p-3.5">
+                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-700 border border-blue-200">
+                                    {u.role}
+                                  </span>
+                                </td>
+                                <td className="p-3.5 text-right space-x-3">
+                                  <button onClick={() => handleEditUser(u)} className="text-blue-600 hover:text-blue-800 font-semibold text-xs transition-colors">
+                                    Edit Role
+                                  </button>
+                                  {u.email?.toLowerCase() !== currentUserEmail.toLowerCase() && u.id !== session?.user?.id && (
+                                    <button onClick={() => handleDeleteUser(u)} className="text-rose-600 hover:text-rose-800 font-semibold text-xs transition-colors">
+                                      Remove
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            ))
+                          )}
                         </tbody>
                       </table>
                     </div>
@@ -4864,30 +4932,80 @@ export default function App() {
 
           {/* Add User Modal */}
           {isAddUserModalOpen && (
-            <div className="fixed inset-0 z-[110] bg-slate-900/50 flex items-center justify-center p-4">
-              <div className="bg-white rounded-xl shadow-xl w-full max-w-md p-6">
-                <h3 className="text-lg font-bold text-slate-900 mb-4">Add New User</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Name</label>
-                    <input type="text" className="w-full border border-slate-300 rounded-md p-2 text-sm" value={newUserName} onChange={e => setNewUserName(e.target.value)} placeholder="John Doe" />
-                  </div>
-                  <div>
-                    <label className="block text-sm font-medium text-slate-700 mb-1">Role</label>
-                    <input type="text" list="roles-list" className="w-full border border-slate-300 rounded-md p-2 text-sm" value={newUserRole} onChange={e => setNewUserRole(e.target.value)} placeholder="e.g. Sales Manager" />
-                    <datalist id="roles-list">
-                      <option value="General Manager" />
-                      <option value="Sales Manager" />
-                      <option value="Director of Sales" />
-                      <option value="Sales Coordinator" />
-                      <option value="Front Desk Supervisor" />
-                    </datalist>
-                  </div>
-                  <div className="flex gap-3 justify-end mt-6">
-                    <button onClick={() => setIsAddUserModalOpen(false)} className="px-4 py-2 text-slate-600 font-medium hover:bg-slate-100 rounded-md">Cancel</button>
-                    <button onClick={handleAddUser} className="px-4 py-2 bg-blue-600 text-white font-medium rounded-md hover:bg-blue-700">Add User</button>
-                  </div>
+            <div className="fixed inset-0 z-[110] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 border border-slate-200">
+                <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
+                  <h3 className="text-base font-bold text-slate-900">Add Team Member</h3>
+                  <button onClick={() => setIsAddUserModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">
+                    &times;
+                  </button>
                 </div>
+                <form onSubmit={handleAddUser} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
+                      value={newUserName}
+                      onChange={e => setNewUserName(e.target.value)}
+                      placeholder="e.g. Sarah Jenkins"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Work Email Address</label>
+                    <input
+                      type="email"
+                      required
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
+                      value={newUserEmail}
+                      onChange={e => setNewUserEmail(e.target.value)}
+                      placeholder="e.g. sjenkins@hotel.com"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">Assigned Role</label>
+                    <select
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
+                      value={newUserRole}
+                      onChange={e => setNewUserRole(e.target.value)}
+                    >
+                      <option value="Sales Agent">Sales Agent</option>
+                      <option value="Sales Manager">Sales Manager</option>
+                      <option value="Director of Sales">Director of Sales</option>
+                      <option value="Front Desk Supervisor">Front Desk Supervisor</option>
+                      <option value="General Manager">General Manager</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                      Initial Password <span className="font-normal text-slate-400">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
+                      value={newUserPassword}
+                      onChange={e => setNewUserPassword(e.target.value)}
+                      placeholder="Auto-generated if left blank"
+                    />
+                  </div>
+                  <div className="flex gap-3 justify-end mt-6 pt-3 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => setIsAddUserModalOpen(false)}
+                      className="px-4 py-2 text-slate-600 font-semibold text-xs hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={isSubmittingUser}
+                      className="px-4 py-2 bg-blue-600 text-white font-semibold text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+                    >
+                      {isSubmittingUser ? 'Provisioning...' : 'Add & Create Account'}
+                    </button>
+                  </div>
+                </form>
               </div>
             </div>
           )}

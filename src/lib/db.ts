@@ -154,54 +154,5 @@ export async function seedDefaultTemplates(): Promise<void> {
 }
 
 export async function seedTestTeam(): Promise<void> {
-  console.log('Seed test team called');
-  try {
-    const supabase = await getSupabaseClient(true);
-    if (!supabase) return;
-
-    const team = [
-      { name: 'Arzaan Shaikh', email: 'arzaan@leadflow.com', role: 'General Manager' },
-      { name: 'Rokeya Ahmed', email: 'rokeya@leadflow.com', role: 'Director of Sales' },
-      { name: 'Riham Mohammed Jehangir', email: 'riham@leadflow.com', role: 'Sales Manager' },
-      { name: 'Muntaqim Elahi', email: 'muntaqim@leadflow.com', role: 'Front Desk Supervisor' }
-    ];
-
-    console.log('Seeding test team...');
-    for (const t of team) {
-      // Create user in Auth
-      const { data: authUser, error: authError } = await supabase.auth.admin.createUser({
-        email: t.email,
-        password: 'password123',
-        email_confirm: true,
-        user_metadata: { name: t.name, role: t.role }
-      });
-
-      if (authError) {
-        console.error(`Error creating auth user ${t.email}:`, authError.message);
-        // Continue anyway in case they already exist in auth but missing in users table
-      }
-
-      // We need to fetch the auth user if it already exists to get its ID
-      let userId = authUser?.user?.id;
-      if (!userId) {
-        const { data: existingUsers } = await supabase.auth.admin.listUsers();
-        const existing = existingUsers.users.find((u: any) => u.email === t.email);
-        userId = existing?.id;
-      }
-
-      // Insert into public users table
-      if (userId) {
-        await supabase.from('users').upsert({
-          id: userId,
-          name: t.name,
-          email: t.email,
-          role: t.role,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString()
-        });
-      }
-    }
-  } catch (err) {
-    console.error('Seed test team error:', err);
-  }
+  // No mock users are seeded. Users are only created when real accounts sign up.
 }
