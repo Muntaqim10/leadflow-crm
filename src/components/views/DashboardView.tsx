@@ -480,18 +480,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
             if (upcoming.length === 0) {
               return (
-                <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-3 min-h-[160px] py-4">
+                <div className="h-full flex flex-col items-center justify-center text-slate-500 gap-2 min-h-[150px] py-4">
                   <CalendarDays className="h-8 w-8 text-slate-300" />
                   <p className="text-sm font-medium">No upcoming appointments scheduled.</p>
-                  {onScheduleAppointment && (
-                    <button
-                      onClick={onScheduleAppointment}
-                      className="flex items-center gap-1.5 px-3.5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold transition-all shadow-sm active:scale-95 cursor-pointer"
-                    >
-                      <Plus className="h-4 w-4" />
-                      <span>Schedule First Appointment</span>
-                    </button>
-                  )}
                 </div>
               );
             }
