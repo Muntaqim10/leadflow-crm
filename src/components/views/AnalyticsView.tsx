@@ -189,7 +189,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             <div>
               <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-sky-600">
                 <span className="w-2 h-2 rounded-full bg-blue-500"></span>
-                <span>Corp</span>
+                <span>Corporate</span>
               </div>
               <span className="text-xs font-bold text-slate-800 mt-1 block">
                 {corporateCount} ({corporatePct.toFixed(0)}%)
