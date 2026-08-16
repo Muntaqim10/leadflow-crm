@@ -324,12 +324,14 @@ const calculateLeadScore = (lead: Lead) => {
 
 const getDefaultStartDate = () => {
   const today = new Date();
-  return new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+  // Rolling past 7 days (1 week ago)
+  const pastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+  return pastWeek.toISOString().split('T')[0];
 };
 
 const getDefaultEndDate = () => {
   const today = new Date();
-  return new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+  return today.toISOString().split('T')[0];
 };
 
 const formatDisplayDate = (dateStr: string) => {
@@ -432,12 +434,7 @@ export default function App() {
 
   const { data: usersData } = useSWR(session ? '/api/users' : null, fetcher, { fallbackData: [] });
 
-  const users: User[] = Array.isArray(usersData) && usersData.length > 0 ? usersData : [
-    { id: '1', name: 'Arzaan Shaikh', role: 'General Manager', email: 'arzaan@leadflow.com' },
-    { id: '2', name: 'Rokeya Ahmed', role: 'Director of Sales', email: 'rokeya@leadflow.com' },
-    { id: '3', name: 'Riham Mohammed Jehangir', role: 'Sales Manager', email: 'riham@leadflow.com' },
-    { id: '4', name: 'Muntaqim Elahi', role: 'Front Desk Supervisor', email: 'muntaqim@leadflow.com' }
-  ];
+  const users: User[] = Array.isArray(usersData) ? usersData : [];
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
@@ -1265,6 +1262,9 @@ export default function App() {
     setSuccessMsg('');
 
     const combinedName = formClientName.trim() + (formCompanyName.trim() ? ` / ${formCompanyName.trim()}` : '');
+    const isCreating = !selectedLead || !isEditing;
+    const finalStatus = isCreating ? 'new' : formStatus;
+
     const leadPayload = {
       name_company: combinedName || 'Unnamed Lead',
       email: formEmail,
@@ -1281,11 +1281,11 @@ export default function App() {
       }),
       revenue_potential: formRevenue,
       assigned_sales_manager_id: formManager,
-      status: formStatus,
+      status: finalStatus,
       market_segment: formSegment,
       document_url: formDocumentUrl || null,
       document_name: formDocumentName || null,
-      lost_reason: formStatus === 'lost' ? (formLostReason || 'Other') : null,
+      lost_reason: finalStatus === 'lost' ? (formLostReason || 'Other') : null,
     };
 
     try {
@@ -5436,41 +5436,6 @@ export default function App() {
                       <option value="group">Group</option>
                     </select>
                   </div>
-
-                  <div>
-                    <label className="block text-slate-600 font-bold mb-1">Status</label>
-                    <select
-                      value={formStatus}
-                      onChange={(e) => setFormStatus(e.target.value)}
-                      className="w-full bg-white border border-slate-300 rounded-lg p-2.5 outline-none focus:border-[#1F3A60] focus:ring-1 focus:ring-[#1F3A60] text-slate-800"
-                    >
-                      <option value="new">New</option>
-                      <option value="contacted">Contacted</option>
-                      <option value="proposal_sent">Proposal Sent</option>
-                      <option value="negotiation">Negotiation</option>
-                      <option value="confirmed">Confirmed</option>
-                      <option value="lost">Lost</option>
-                    </select>
-                  </div>
-
-                  {formStatus === 'lost' && (
-                    <div>
-                      <label className="block text-rose-600 font-bold mb-1">Reason Lost</label>
-                      <select
-                        value={formLostReason}
-                        required
-                        onChange={(e) => setFormLostReason(e.target.value)}
-                        className="w-full bg-white border border-rose-300 rounded-lg p-2.5 outline-none focus:border-rose-500 focus:ring-1 focus:ring-rose-500 text-slate-800 font-medium"
-                      >
-                        <option value="">-- Select Reason --</option>
-                        <option value="Rate Too High">Rate Too High</option>
-                        <option value="Unavailable Dates">Unavailable Dates</option>
-                        <option value="Space Too Small">Space Too Small</option>
-                        <option value="Competitor">Competitor</option>
-                        <option value="Other">Other</option>
-                      </select>
-                    </div>
-                  )}
 
                   <div className="grid grid-cols-2 gap-4 col-span-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
                     <div>
