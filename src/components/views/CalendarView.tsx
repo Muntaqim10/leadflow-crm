@@ -3,7 +3,7 @@
 import React, { useEffect, useRef } from 'react';
 import { CalendarDays, Flame, Zap, Sparkles, Calendar } from 'lucide-react';
 import { Lead } from '@/types/crm';
-import { getLeadBookingType } from '@/lib/calculations';
+import { getLeadBookingType, parseRoomDetails } from '@/lib/calculations';
 
 interface CalendarViewProps {
   calendarViewMode: 'demand' | 'appointments';
@@ -402,45 +402,96 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                             </div>
                           )}
 
-                          {/* Hover Popover Tooltip */}
+                          {/* Hover Popover Tooltip with Event Name & Full Details */}
                           {hasDemand && (
-                            <div className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 bg-slate-900 text-white rounded-xl p-3 shadow-2xl z-50 pointer-events-none text-xs border border-slate-700 animate-in fade-in zoom-in-95 duration-150">
-                              <div className="font-bold border-b border-slate-700 pb-1.5 mb-2 flex justify-between items-center text-slate-200">
-                                <span className="flex items-center gap-1.5">
+                            <div className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-72 sm:w-80 bg-slate-900 text-white rounded-xl p-3.5 shadow-2xl z-50 pointer-events-none text-xs border border-slate-700 animate-in fade-in zoom-in-95 duration-150">
+                              <div className="font-bold border-b border-slate-700 pb-2 mb-2.5 flex justify-between items-center text-slate-200">
+                                <span className="flex items-center gap-1.5 font-bold">
                                   <span
                                     className={`w-2 h-2 rounded-full ${
                                       isHigh ? 'bg-red-500' : isModerate ? 'bg-yellow-400' : 'bg-emerald-400'
                                     }`}
                                   ></span>
                                   <span>
-                                    {dayLabel} {isHigh ? 'High Demand' : isModerate ? 'Moderate Demand' : 'Low Demand'}
+                                    {dayLabel} • {isHigh ? 'High Demand' : isModerate ? 'Moderate Demand' : 'Low Demand'}
                                   </span>
                                 </span>
-                                <span className="text-emerald-400 text-[11px] font-bold">
+                                <span className="text-emerald-400 text-xs font-extrabold">
                                   ${Math.round(revenue).toLocaleString()}
                                 </span>
                               </div>
-                              <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
+
+                              <div className="space-y-2.5 max-h-56 overflow-y-auto pr-1">
                                 {(dayData?.leads || []).map((lead: any, lIdx: number) => {
                                   const bType = getLeadBookingType(lead.rooms_or_event_details);
+                                  const parsed = parseRoomDetails(lead.rooms_or_event_details);
+                                  const roomSummary =
+                                    parsed.guestRooms && parsed.guestRooms.length > 0
+                                      ? parsed.guestRooms
+                                          .filter((r: any) => r.type && r.count)
+                                          .map((r: any) => `${r.count}x ${r.type}`)
+                                          .join(', ')
+                                      : '';
+
                                   return (
                                     <div
                                       key={lIdx}
-                                      className="bg-slate-800/90 p-2 rounded-lg text-[10px] space-y-1 border border-slate-700"
+                                      className="bg-slate-800/90 p-2.5 rounded-lg text-[10px] space-y-1.5 border border-slate-700/80 shadow-sm text-left"
                                     >
-                                      <div className="flex justify-between items-center">
-                                        <span className="font-bold text-white truncate max-w-[120px]">
+                                      {/* Header: Company Name & Booking Type */}
+                                      <div className="flex justify-between items-start gap-2">
+                                        <span className="font-bold text-white text-[11px] truncate max-w-[170px]">
                                           {lead.name_company}
                                         </span>
                                         <span
-                                          className={`px-1.5 py-0.5 rounded text-[8px] font-bold ${bType.badgeClass}`}
+                                          className={`px-1.5 py-0.5 rounded text-[8px] font-bold shrink-0 ${bType.badgeClass}`}
                                         >
                                           {bType.icon} {bType.shortLabel}
                                         </span>
                                       </div>
-                                      <div className="flex justify-between text-slate-400">
-                                        <span className="capitalize">{lead.status.replace('_', ' ')}</span>
-                                        <span className="font-semibold text-emerald-400">
+
+                                      {/* Event Space Details */}
+                                      {parsed.eventRoom && (
+                                        <div className="flex items-start gap-1.5 text-amber-300 font-medium bg-amber-950/40 p-1.5 rounded border border-amber-800/40">
+                                          <span className="shrink-0">🏛️</span>
+                                          <span className="truncate">
+                                            <strong className="text-amber-200">Space:</strong> {parsed.eventRoom}{' '}
+                                            {parsed.eventRoomRate ? `($${parsed.eventRoomRate})` : ''}
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      {/* Event Specific Notes / Description */}
+                                      {parsed.eventDetails && (
+                                        <div className="flex items-start gap-1.5 text-slate-300 text-[9px] bg-slate-900/60 p-1.5 rounded border border-slate-700/50">
+                                          <span className="shrink-0 text-sky-400">📝</span>
+                                          <span className="line-clamp-2 leading-tight">
+                                            <strong className="text-slate-200">Event:</strong> {parsed.eventDetails}
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      {/* Room Block Summary */}
+                                      {roomSummary && (
+                                        <div className="flex items-start gap-1.5 text-sky-300 text-[9px] bg-sky-950/40 p-1.5 rounded border border-sky-800/40">
+                                          <span className="shrink-0">🏨</span>
+                                          <span className="truncate">
+                                            <strong className="text-sky-200">Rooms:</strong> {roomSummary}
+                                          </span>
+                                        </div>
+                                      )}
+
+                                      {/* Status, Segment & Potential Revenue */}
+                                      <div className="flex justify-between items-center text-slate-400 pt-0.5 border-t border-slate-700/50 text-[9px]">
+                                        <div className="flex items-center gap-1.5">
+                                          <span className="capitalize px-1.5 py-0.5 rounded bg-slate-700 text-slate-200 font-medium">
+                                            {lead.status.replace('_', ' ')}
+                                          </span>
+                                          {lead.market_segment && (
+                                            <span className="text-slate-400">{lead.market_segment}</span>
+                                          )}
+                                        </div>
+                                        <span className="font-extrabold text-emerald-400 text-[10px]">
                                           ${parseFloat(lead.revenue || '0').toLocaleString()}
                                         </span>
                                       </div>
@@ -448,8 +499,9 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                                   );
                                 })}
                               </div>
-                              <div className="text-[9px] text-sky-400 font-medium text-center mt-2 border-t border-slate-800 pt-1">
-                                Click to view lead details
+
+                              <div className="text-[9px] text-sky-400 font-medium text-center mt-2.5 border-t border-slate-800 pt-1.5">
+                                Click to view full lead details
                               </div>
                             </div>
                           )}
