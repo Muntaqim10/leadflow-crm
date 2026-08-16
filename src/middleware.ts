@@ -4,11 +4,8 @@ import type { NextRequest } from 'next/server';
 export function middleware(request: NextRequest) {
   // Only protect /api routes
   if (request.nextUrl.pathname.startsWith('/api/')) {
-    // Exclude auth routes
-    if (
-      request.nextUrl.pathname.startsWith('/api/auth/login') ||
-      request.nextUrl.pathname.startsWith('/api/auth/logout')
-    ) {
+    // Exclude public auth routes
+    if (request.nextUrl.pathname.startsWith('/api/auth/')) {
       return NextResponse.next();
     }
 

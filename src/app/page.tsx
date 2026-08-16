@@ -135,9 +135,12 @@ export default function App() {
 
   // Authorization Helpers
   const currentUserEmail = session?.user?.email || '';
-  const isMuntaqim =
-    currentUserEmail.toLowerCase().includes('muntaqim') || currentUserEmail.toLowerCase() === 'muntaquime@gmail.com';
-  const isArzaan = currentUserEmail.toLowerCase() === 'arzaan@leadflow.com';
+  const emailLower = currentUserEmail.toLowerCase().trim();
+  const isMuntaqim = emailLower === 'muntaqim@leadflow.com' || emailLower === 'muntaquime@gmail.com';
+  const isArzaan = emailLower === 'arzaan@leadflow.com';
+  const isRokeya = emailLower === 'rokeya@leadflow.com';
+  const isRiham = emailLower === 'riham@leadflow.com';
+
   const defaultUserRole = isMuntaqim
     ? 'Front Desk Supervisor'
     : isArzaan
@@ -146,7 +149,7 @@ export default function App() {
   const defaultUserName =
     session?.user?.user_metadata?.name ||
     session?.user?.user_metadata?.full_name ||
-    (isMuntaqim ? 'Muntaqim Elahi' : 'User');
+    (isMuntaqim ? 'Muntaqim Elahi' : isArzaan ? 'Arzaan Shaikh' : emailLower.split('@')[0] || 'User');
 
   const users: User[] =
     Array.isArray(usersData) && usersData.length > 0
@@ -156,29 +159,23 @@ export default function App() {
       : [];
 
   const currentUserObj = users.find(
-    (u) => u.email?.toLowerCase() === currentUserEmail.toLowerCase() || u.id === session?.user?.id
+    (u) => (u.email && u.email.toLowerCase().trim() === emailLower) || u.id === session?.user?.id
   );
   const currentUserRole = currentUserObj?.role || defaultUserRole;
   const currentUserName = currentUserObj?.name || defaultUserName;
-  const isGeneralManager = currentUserRole.toLowerCase().includes('general manager') || isArzaan;
+  const currentUserTier = (currentUserObj as any)?.permission_tier || session?.user?.user_metadata?.permission_tier;
+
+  const roleLower = currentUserRole.toLowerCase();
+  const isGeneralManager = currentUserTier === 'admin' || roleLower.includes('general manager') || roleLower.includes('admin') || isArzaan;
   const isFrontDeskSupervisor =
-    currentUserRole.toLowerCase().includes('front desk supervisor') ||
-    currentUserRole.toLowerCase().includes('supervisor') ||
+    roleLower.includes('front desk supervisor') ||
+    roleLower.includes('supervisor') ||
     isMuntaqim;
+  const isSalesAgent = roleLower.includes('agent') && !isGeneralManager && !isFrontDeskSupervisor;
 
-  const isRokeya =
-    currentUserEmail.toLowerCase().includes('rokeya') ||
-    currentUserName.toLowerCase().includes('rokeya') ||
-    currentUserRole.toLowerCase().includes('director');
-  const isRiham =
-    currentUserEmail.toLowerCase().includes('riham') ||
-    currentUserName.toLowerCase().includes('riham') ||
-    (currentUserRole.toLowerCase().includes('manager') && !isGeneralManager);
-  const isSalesAgent = currentUserRole.toLowerCase().includes('agent');
-
-  const canDeleteLeads = (isGeneralManager || isFrontDeskSupervisor || isMuntaqim) && !isRokeya && !isRiham && !isSalesAgent;
-  const canManageUsers = isGeneralManager || isFrontDeskSupervisor || isMuntaqim;
-  const canManageHotelDetails = isGeneralManager || isFrontDeskSupervisor || isMuntaqim;
+  const canManageUsers = currentUserTier === 'admin' || isGeneralManager || isFrontDeskSupervisor || isMuntaqim;
+  const canDeleteLeads = canManageUsers && !isRokeya && !isRiham && !isSalesAgent;
+  const canManageHotelDetails = canManageUsers;
 
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [aiInsights, setAiInsights] = useState<string | null>(null);

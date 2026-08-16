@@ -15,15 +15,12 @@ export async function GET(request: Request) {
       getRows('users'),
     ]);
 
-    // Create a map of users for quick name lookup
-    const userMap: Record<string, string> = {
-      '1': 'Arzaan Shaikh',
-      '2': 'Rokeya Ahmed',
-      '3': 'Riham Mohammed Jehangir',
-      '4': 'Muntaqim Elahi'
-    };
+    // Create a map of users for dynamic name lookup
+    const userMap: Record<string, string> = {};
     users.forEach((user) => {
-      userMap[user.id] = user.name;
+      if (user.id && user.name) {
+        userMap[user.id] = user.name;
+      }
     });
 
     // Apply filters
@@ -234,22 +231,31 @@ export async function GET(request: Request) {
     filteredLeads.forEach((lead) => {
       const status = lead.status;
       if (status in stageVelocity && lead.created_at) {
-        const lastActive = new Date(lead.updated_at || lead.created_at).getTime();
-        
-        // Days since the lead was last updated (assumed to be when it entered the current stage)
-        const diffDaysActive = Math.max(0, (now - lastActive) / (1000 * 60 * 60 * 24));
-        
-        stageVelocity[status].totalDays += diffDaysActive;
+        const created = new Date(lead.created_at).getTime();
+        const updated = lead.updated_at ? new Date(lead.updated_at).getTime() : created;
+        const contacted = lead.first_contacted_at ? new Date(lead.first_contacted_at).getTime() : null;
+
+        let diffDays = 0;
+        if (status === 'new') {
+          diffDays = Math.max(0, (now - created) / (1000 * 60 * 60 * 24));
+        } else if (status === 'contacted') {
+          const start = contacted || updated;
+          diffDays = Math.max(0, (now - start) / (1000 * 60 * 60 * 24));
+        } else {
+          diffDays = Math.max(0, (now - updated) / (1000 * 60 * 60 * 24));
+        }
+
+        stageVelocity[status].totalDays += diffDays;
         stageVelocity[status].count += 1;
 
-        if ((status === 'proposal_sent' || status === 'negotiation') && diffDaysActive > 10) {
+        if ((status === 'proposal_sent' || status === 'negotiation') && diffDays > 10) {
           stagnantCount += 1;
         }
       }
     });
 
     const averageDaysInStage = Object.entries(stageVelocity).reduce((acc, [stage, data]) => {
-      acc[stage] = data.count > 0 ? data.totalDays / data.count : 0;
+      acc[stage] = data.count > 0 ? Number((data.totalDays / data.count).toFixed(1)) : 0;
       return acc;
     }, {} as Record<string, number>);
 

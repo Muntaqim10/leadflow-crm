@@ -516,18 +516,24 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             <h4 className="text-xs font-bold text-slate-500 uppercase">Avg Days in Stage</h4>
             <div className="flex justify-between">
               <span className="text-slate-600 font-medium">New Stage</span>
-              <span className="font-bold text-slate-800">{Math.round(analytics?.averageDaysInStage?.new || 0)} days</span>
+              <span className="font-bold text-slate-800">{analytics?.averageDaysInStage?.new ?? 0} days</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-slate-600 font-medium">Contacted</span>
+              <span className="font-bold text-slate-800">
+                {analytics?.averageDaysInStage?.contacted ?? 0} days
+              </span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-600 font-medium">Proposal Sent</span>
               <span className="font-bold text-slate-800">
-                {Math.round(analytics?.averageDaysInStage?.proposal_sent || 0)} days
+                {analytics?.averageDaysInStage?.proposal_sent ?? 0} days
               </span>
             </div>
             <div className="flex justify-between">
               <span className="text-slate-600 font-medium">Negotiation</span>
               <span className="font-bold text-slate-800">
-                {Math.round(analytics?.averageDaysInStage?.negotiation || 0)} days
+                {analytics?.averageDaysInStage?.negotiation ?? 0} days
               </span>
             </div>
           </div>

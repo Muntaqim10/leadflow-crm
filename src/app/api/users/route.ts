@@ -1,8 +1,56 @@
 import { NextResponse } from 'next/server';
 import { getRows, getSupabaseClient } from '@/lib/db';
+import { cookies } from 'next/headers';
+
+// Helper to authenticate caller and determine admin rights
+async function getCallerAuth() {
+  let token: string | undefined;
+  try {
+    const cookieStore = await cookies();
+    token = cookieStore.get('auth_token')?.value;
+  } catch (e) {}
+
+  if (!token) {
+    return { isAuthenticated: false, isAdmin: false, user: null };
+  }
+
+  const supabase = await getSupabaseClient(true);
+  if (!supabase?.auth?.admin) {
+    return { isAuthenticated: false, isAdmin: false, user: null };
+  }
+
+  const { data: { user }, error } = await supabase.auth.getUser(token);
+  if (error || !user) {
+    return { isAuthenticated: false, isAdmin: false, user: null };
+  }
+
+  const metaTier = user.user_metadata?.permission_tier;
+  const role = (user.user_metadata?.role || '').toLowerCase();
+  const email = (user.email || '').toLowerCase();
+
+  const isSuperAdminEmail = email === 'muntaqim@leadflow.com' || email === 'muntaquime@gmail.com';
+  const isAdmin =
+    metaTier === 'admin' ||
+    role.includes('admin') ||
+    role.includes('general manager') ||
+    role.includes('supervisor') ||
+    role.includes('director') ||
+    isSuperAdminEmail;
+
+  return {
+    isAuthenticated: true,
+    isAdmin,
+    user
+  };
+}
 
 export async function GET() {
   try {
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const supabase = await getSupabaseClient(true);
     let authUsers: any[] = [];
     if (supabase?.auth?.admin) {
@@ -98,6 +146,14 @@ export async function GET() {
 
 export async function POST(request: Request) {
   try {
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!caller.isAdmin) {
+      return NextResponse.json({ error: 'Forbidden: Administrator privileges required to create accounts' }, { status: 403 });
+    }
+
     const { email, name, role, permission_tier, password } = await request.json();
     if (!email || !name) {
       return NextResponse.json({ error: 'Email and Name are required' }, { status: 400 });
@@ -160,11 +216,24 @@ export async function POST(request: Request) {
 
 export async function DELETE(request: Request) {
   try {
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!caller.isAdmin) {
+      return NextResponse.json({ error: 'Forbidden: Administrator privileges required to delete accounts' }, { status: 403 });
+    }
+
     const { searchParams } = new URL(request.url);
     const id = searchParams.get('id');
     const reassignTo = searchParams.get('reassignTo');
     if (!id) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
+    }
+
+    // Prevent deleting own account
+    if (caller.user?.id === id) {
+      return NextResponse.json({ error: 'Cannot delete your own active account' }, { status: 400 });
     }
 
     const supabase = await getSupabaseClient(true);
@@ -204,10 +273,26 @@ export async function DELETE(request: Request) {
 
 export async function PATCH(request: Request) {
   try {
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id, name, role, permission_tier } = await request.json();
     if (!id) {
       return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
     }
+
+    // Changing role or permission tier or modifying another user requires admin privileges
+    const isSelfUpdate = caller.user?.id === id;
+    const isRoleOrTierChange = role !== undefined || permission_tier !== undefined;
+
+    if ((!isSelfUpdate || isRoleOrTierChange) && !caller.isAdmin) {
+      return NextResponse.json({
+        error: 'Forbidden: Only administrators can modify user roles or permission tiers'
+      }, { status: 403 });
+    }
+
     const supabase = await getSupabaseClient(true);
     if (!supabase) {
       return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
@@ -215,7 +300,7 @@ export async function PATCH(request: Request) {
 
     const updates: any = { updated_at: new Date().toISOString() };
     if (name !== undefined) updates.name = name;
-    if (role !== undefined) updates.role = role;
+    if (role !== undefined && caller.isAdmin) updates.role = role;
 
     const { data, error } = await supabase
       .from('users')
@@ -231,8 +316,8 @@ export async function PATCH(request: Request) {
       try {
         const metadataUpdates: any = {};
         if (name !== undefined) metadataUpdates.name = name;
-        if (role !== undefined) metadataUpdates.role = role;
-        if (permission_tier !== undefined) metadataUpdates.permission_tier = permission_tier;
+        if (role !== undefined && caller.isAdmin) metadataUpdates.role = role;
+        if (permission_tier !== undefined && caller.isAdmin) metadataUpdates.permission_tier = permission_tier;
 
         if (Object.keys(metadataUpdates).length > 0) {
           await supabase.auth.admin.updateUserById(id, {
@@ -244,9 +329,10 @@ export async function PATCH(request: Request) {
       }
     }
 
-    return NextResponse.json({ ...data, permission_tier });
+    return NextResponse.json({ ...data, permission_tier: permission_tier || data?.permission_tier });
   } catch (error: any) {
     console.error('Failed to update user:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
   }
 }
+

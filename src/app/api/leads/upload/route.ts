@@ -10,6 +10,21 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
     }
 
+    // 1. Enforce file size limit (25MB)
+    const MAX_SIZE = 25 * 1024 * 1024;
+    if (file.size > MAX_SIZE) {
+      return NextResponse.json({ error: 'File size exceeds maximum allowed limit of 25MB' }, { status: 400 });
+    }
+
+    // 2. Validate file extension against allowed whitelist
+    const rawExt = (file.name.split('.').pop() || '').toLowerCase();
+    const ALLOWED_EXTENSIONS = ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'csv', 'png', 'jpg', 'jpeg', 'txt', 'webp'];
+    if (!ALLOWED_EXTENSIONS.includes(rawExt)) {
+      return NextResponse.json({
+        error: `File type .${rawExt} is not supported. Allowed formats: PDF, DOC/DOCX, XLS/XLSX, CSV, PNG, JPG, WEBP, TXT.`
+      }, { status: 400 });
+    }
+
     const supabase = await getSupabaseClient();
 
     // Convert file to a Node Buffer
@@ -17,8 +32,7 @@ export async function POST(request: Request) {
     const buffer = Buffer.from(arrayBuffer);
 
     // Generate a unique filename to prevent namespace collisions
-    const fileExt = file.name.split('.').pop();
-    const uniqueFileName = `${crypto.randomUUID()}.${fileExt}`;
+    const uniqueFileName = `${crypto.randomUUID()}.${rawExt}`;
     const filePath = `documents/${uniqueFileName}`;
 
     // Ensure the storage bucket exists programmatically to self-heal if missing
