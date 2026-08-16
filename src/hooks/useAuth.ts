@@ -69,12 +69,11 @@ export function useAuth(users: User[]) {
   const currentUserEmail = session?.user?.email || '';
   const emailLower = currentUserEmail.toLowerCase().trim();
   const isMuntaqim = emailLower === 'muntaqim@leadflow.com' || emailLower === 'muntaquime@gmail.com';
-  const isArzaan = emailLower === 'arzaan@leadflow.com';
   const isRokeya = emailLower === 'rokeya@leadflow.com';
   const isRiham = emailLower === 'riham@leadflow.com';
 
-  const defaultUserRole = isMuntaqim ? 'Front Desk Supervisor' : isArzaan ? 'General Manager' : session?.user?.user_metadata?.role || 'Sales Agent';
-  const defaultUserName = session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || (isMuntaqim ? 'Muntaqim Elahi' : isArzaan ? 'Arzaan Shaikh' : emailLower.split('@')[0] || 'User');
+  const defaultUserRole = isMuntaqim ? 'Front Desk Supervisor' : session?.user?.user_metadata?.role || 'Sales Agent';
+  const defaultUserName = session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || (isMuntaqim ? 'Muntaqim Elahi' : (emailLower ? emailLower.split('@')[0] : 'User'));
 
   const currentUserObj = users.find(u => (u.email && u.email.toLowerCase().trim() === emailLower) || u.id === session?.user?.id);
   const currentUserRole = currentUserObj?.role || defaultUserRole;
@@ -82,7 +81,7 @@ export function useAuth(users: User[]) {
   const currentUserTier = (currentUserObj as any)?.permission_tier || session?.user?.user_metadata?.permission_tier;
 
   const roleLower = currentUserRole.toLowerCase();
-  const isGeneralManager = currentUserTier === 'admin' || roleLower.includes('general manager') || roleLower.includes('admin') || isArzaan;
+  const isGeneralManager = currentUserTier === 'admin' || roleLower.includes('general manager') || roleLower.includes('admin');
   const isFrontDeskSupervisor = roleLower.includes('front desk supervisor') || roleLower.includes('supervisor') || isMuntaqim;
   const isSalesAgent = roleLower.includes('agent') && !isGeneralManager && !isFrontDeskSupervisor;
 

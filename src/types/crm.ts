@@ -85,15 +85,72 @@ export interface Template {
 }
 
 export interface Analytics {
-  totalLeads: number;
-  totalPipelineValue: number;
-  conversionRate: number;
-  avgLeadTimeDays: number;
-  leadsByStatus: { status: string; count: number }[];
-  leadsBySource: { source: string; count: number; value: number }[];
-  leadsBySegment: { segment: string; count: number; value: number; avgLeadTime: number }[];
-  lostReasons: { reason: string; count: number }[];
-  speedToLeadMinutes: number;
+  summary: {
+    totalLeads: number;
+    convertedLeads: number;
+    lostLeads: number;
+    conversionRate: number;
+    revenueGenerated: number;
+    potentialRevenue: number;
+  };
+  statusCounts: {
+    new: number;
+    contacted: number;
+    proposal_sent: number;
+    negotiation: number;
+    confirmed: number;
+    lost: number;
+  };
+  segmentCounts: {
+    corporate: number;
+    leisure: number;
+    group: number;
+  };
+  corporateCount: number;
+  leisureCount: number;
+  groupCount: number;
+  corporatePct: number;
+  leisurePct: number;
+  groupPct: number;
+  confirmedRevBySegment: Record<string, number>;
+  totalConfirmedRev: number;
+  pipelineValueByStage: Record<string, number>;
+  totalActivePipelineValue: number;
+  agentConversion: {
+    id: string;
+    name: string;
+    total: number;
+    confirmed: number;
+    conversionRate: number;
+  }[];
+  lostReasons: Record<string, number>;
+  sourcePerformance: {
+    source: string;
+    total: number;
+    confirmed: number;
+    conversionRate: number;
+    revenue: number;
+  }[];
+  avgBookingLeadTime: number;
+  bookingLeadTimeBySegment: Record<string, number>;
+  avgResponseTimeHours: number;
+  agentResponseTimes: {
+    id: string;
+    name: string;
+    avgHours: number;
+    count: number;
+  }[];
+  averageDaysInStage: Record<string, number>;
+  stagnantCount: number;
+  // Optional / backward compatibility
+  totalLeads?: number;
+  totalPipelineValue?: number;
+  conversionRate?: number;
+  avgLeadTimeDays?: number;
+  leadsByStatus?: { status: string; count: number }[];
+  leadsBySource?: { source: string; count: number; value: number }[];
+  leadsBySegment?: { segment: string; count: number; value: number; avgLeadTime: number }[];
+  speedToLeadMinutes?: number;
 }
 
 export interface HeatmapData {

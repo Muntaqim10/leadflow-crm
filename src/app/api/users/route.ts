@@ -137,6 +137,29 @@ export async function GET() {
     });
 
     const userList = Array.from(allUserMap.values());
+    if (!caller.isAdmin) {
+      const sanitizedList = userList.map((u) => {
+        const isSelf =
+          u.id === caller.user?.id ||
+          (u.email && caller.user?.email && u.email.toLowerCase() === caller.user.email.toLowerCase());
+        if (isSelf) {
+          return {
+            id: u.id,
+            name: u.name,
+            role: u.role,
+            email: u.email,
+            permission_tier: u.permission_tier
+          };
+        }
+        return {
+          id: u.id,
+          name: u.name,
+          role: u.role
+        };
+      });
+      return NextResponse.json(sanitizedList);
+    }
+
     return NextResponse.json(userList);
   } catch (error: any) {
     console.error('Failed to fetch users:', error);

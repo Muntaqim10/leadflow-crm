@@ -137,19 +137,16 @@ export default function App() {
   const currentUserEmail = session?.user?.email || '';
   const emailLower = currentUserEmail.toLowerCase().trim();
   const isMuntaqim = emailLower === 'muntaqim@leadflow.com' || emailLower === 'muntaquime@gmail.com';
-  const isArzaan = emailLower === 'arzaan@leadflow.com';
   const isRokeya = emailLower === 'rokeya@leadflow.com';
   const isRiham = emailLower === 'riham@leadflow.com';
 
   const defaultUserRole = isMuntaqim
     ? 'Front Desk Supervisor'
-    : isArzaan
-    ? 'General Manager'
     : session?.user?.user_metadata?.role || 'Sales Agent';
   const defaultUserName =
     session?.user?.user_metadata?.name ||
     session?.user?.user_metadata?.full_name ||
-    (isMuntaqim ? 'Muntaqim Elahi' : isArzaan ? 'Arzaan Shaikh' : emailLower.split('@')[0] || 'User');
+    (isMuntaqim ? 'Muntaqim Elahi' : emailLower ? emailLower.split('@')[0] : 'User');
 
   const users: User[] =
     Array.isArray(usersData) && usersData.length > 0
@@ -166,7 +163,7 @@ export default function App() {
   const currentUserTier = (currentUserObj as any)?.permission_tier || session?.user?.user_metadata?.permission_tier;
 
   const roleLower = currentUserRole.toLowerCase();
-  const isGeneralManager = currentUserTier === 'admin' || roleLower.includes('general manager') || roleLower.includes('admin') || isArzaan;
+  const isGeneralManager = currentUserTier === 'admin' || roleLower.includes('general manager') || roleLower.includes('admin');
   const isFrontDeskSupervisor =
     roleLower.includes('front desk supervisor') ||
     roleLower.includes('supervisor') ||
@@ -353,6 +350,22 @@ export default function App() {
   const [startDate, setStartDate] = useState(getPastWeekStartDate());
   const [endDate, setEndDate] = useState(getTodayDate());
 
+  const fetchAnalytics = async () => {
+    try {
+      const params = new URLSearchParams();
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+      if (dateFilterType) params.set('filterType', dateFilterType);
+
+      const res = await fetch(`/api/analytics?${params.toString()}`);
+      if (res.ok) {
+        setAnalytics(await res.json());
+      }
+    } catch (err: any) {
+      console.error('Failed to fetch analytics:', err);
+    }
+  };
+
   const fetchData = async () => {
     try {
       mutateLeads();
@@ -361,10 +374,15 @@ export default function App() {
       mutateUsers();
       fetchTasks();
 
+      const params = new URLSearchParams();
+      if (startDate) params.set('startDate', startDate);
+      if (endDate) params.set('endDate', endDate);
+      if (dateFilterType) params.set('filterType', dateFilterType);
+
       const [resAnalytics, resHeatmap, resFollowUps] = await Promise.all([
-        fetch('/api/analytics'),
-        fetch('/api/heatmap'),
-        fetch('/api/follow-ups')
+        fetch(`/api/analytics?${params.toString()}`),
+        fetch('/api/demand/heatmap'),
+        fetch('/api/demand/follow-ups')
       ]);
 
       if (resAnalytics.ok) setAnalytics(await resAnalytics.json());
@@ -455,6 +473,12 @@ export default function App() {
       fetchData();
     }
   }, [session]);
+
+  useEffect(() => {
+    if (session) {
+      fetchAnalytics();
+    }
+  }, [session, startDate, endDate, dateFilterType, leadsData]);
 
   const handleSignIn = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1328,21 +1352,14 @@ export default function App() {
     return filtered;
   }, [leadTasks, tasksFilter, showCompletedTasks, loggedInUserId]);
 
-  // Calculate Market Segment shares based on filtered leads
-  const segmentCounts = filteredLeads.reduce((acc, lead) => {
-    const s = lead.market_segment || 'leisure';
-    acc[s] = (acc[s] || 0) + 1;
-    return acc;
-  }, {} as Record<string, number>);
+  // Segment, Revenue and Pipeline values computed from /api/analytics
+  const corporateCount = analytics?.corporateCount ?? analytics?.segmentCounts?.corporate ?? 0;
+  const leisureCount = analytics?.leisureCount ?? analytics?.segmentCounts?.leisure ?? 0;
+  const groupCount = analytics?.groupCount ?? analytics?.segmentCounts?.group ?? 0;
 
-  const totalLeadsCount = filteredLeads.length || 1;
-  const corporateCount = segmentCounts['corporate'] || 0;
-  const leisureCount = segmentCounts['leisure'] || 0;
-  const groupCount = segmentCounts['group'] || 0;
-
-  const corporatePct = (corporateCount / totalLeadsCount) * 100;
-  const leisurePct = (leisureCount / totalLeadsCount) * 100;
-  const groupPct = (groupCount / totalLeadsCount) * 100;
+  const corporatePct = analytics?.corporatePct ?? 0;
+  const leisurePct = analytics?.leisurePct ?? 0;
+  const groupPct = analytics?.groupPct ?? 0;
 
   const pieConicGradient = `conic-gradient(
     #3B82F6 0% ${corporatePct}%, 
@@ -1350,33 +1367,27 @@ export default function App() {
     #6366F1 ${corporatePct + leisurePct}% 100%
   )`;
 
-  const confirmedLeadsList = filteredLeads.filter((l) => l.status === 'confirmed');
-  const confirmedRevBySegment = confirmedLeadsList.reduce((acc, lead) => {
-    const s = lead.market_segment || 'leisure';
-    const rev = parseFloat(lead.revenue_potential as any) || 0;
-    acc[s] = (acc[s] || 0) + rev;
-    return acc;
-  }, {} as Record<string, number>);
-  const totalConfirmedRev = Object.values(confirmedRevBySegment).reduce((a, b) => a + b, 0);
+  const confirmedRevBySegment = analytics?.confirmedRevBySegment ?? { corporate: 0, leisure: 0, group: 0 };
+  const totalConfirmedRev = analytics?.totalConfirmedRev ?? analytics?.summary?.revenueGenerated ?? 0;
 
-  const pipelineValueByStage = filteredLeads.reduce((acc, lead) => {
-    const stage = lead.status || 'new';
-    const rev = parseFloat(lead.revenue_potential as any) || 0;
-    acc[stage] = (acc[stage] || 0) + rev;
-    return acc;
-  }, {} as Record<string, number>);
-  const totalActivePipelineValue = Object.entries(pipelineValueByStage)
-    .filter(([stage]) => stage !== 'lost')
-    .reduce((sum, [_, val]) => sum + val, 0);
+  const pipelineValueByStage = analytics?.pipelineValueByStage ?? {
+    new: 0,
+    contacted: 0,
+    proposal_sent: 0,
+    negotiation: 0,
+    confirmed: 0,
+    lost: 0
+  };
+  const totalActivePipelineValue = analytics?.totalActivePipelineValue ?? analytics?.summary?.potentialRevenue ?? 0;
 
   const handleGenerateInsights = async () => {
     setIsGeneratingInsights(true);
     try {
       const statsPayload = {
         totalPipelineValue: totalActivePipelineValue,
-        totalLeads: filteredLeads.length,
-        confirmedLeads: filteredLeads.filter((l) => l.status === 'confirmed').length,
-        conversionRate: analytics?.conversionRate || (filteredLeads.length > 0 ? ((filteredLeads.filter((l) => l.status === 'confirmed').length / filteredLeads.length) * 100).toFixed(1) : 0),
+        totalLeads: analytics?.summary?.totalLeads ?? filteredLeads.length,
+        confirmedLeads: analytics?.summary?.convertedLeads ?? 0,
+        conversionRate: analytics?.summary?.conversionRate ?? 0,
         confirmedRevBySegment,
         pipelineValueByStage,
         corporateCount,

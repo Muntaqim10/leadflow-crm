@@ -259,6 +259,68 @@ export async function GET(request: Request) {
       return acc;
     }, {} as Record<string, number>);
 
+    // Market Segment breakdown
+    const segmentCounts: Record<string, number> = {
+      corporate: 0,
+      leisure: 0,
+      group: 0,
+    };
+    filteredLeads.forEach((lead) => {
+      const seg = (lead.market_segment || 'leisure').toLowerCase();
+      if (seg in segmentCounts) {
+        segmentCounts[seg] += 1;
+      } else {
+        segmentCounts['leisure'] = (segmentCounts['leisure'] || 0) + 1;
+      }
+    });
+
+    const corporateCount = segmentCounts.corporate || 0;
+    const leisureCount = segmentCounts.leisure || 0;
+    const groupCount = segmentCounts.group || 0;
+    const totalSegmentLeads = totalLeads || 1;
+    const corporatePct = (corporateCount / totalSegmentLeads) * 100;
+    const leisurePct = (leisureCount / totalSegmentLeads) * 100;
+    const groupPct = (groupCount / totalSegmentLeads) * 100;
+
+    // Confirmed Revenue by Segment
+    const confirmedRevBySegment: Record<string, number> = {
+      corporate: 0,
+      leisure: 0,
+      group: 0,
+    };
+    let totalConfirmedRev = 0;
+
+    // Pipeline Value by Stage
+    const pipelineValueByStage: Record<string, number> = {
+      new: 0,
+      contacted: 0,
+      proposal_sent: 0,
+      negotiation: 0,
+      confirmed: 0,
+      lost: 0,
+    };
+
+    filteredLeads.forEach((lead) => {
+      const rev = parseFloat(lead.revenue_potential || '0') || 0;
+      const stage = (lead.status || 'new') as keyof typeof pipelineValueByStage;
+      if (stage in pipelineValueByStage) {
+        pipelineValueByStage[stage] += rev;
+      }
+      if (lead.status === 'confirmed') {
+        const seg = (lead.market_segment || 'leisure').toLowerCase();
+        if (seg in confirmedRevBySegment) {
+          confirmedRevBySegment[seg] += rev;
+        } else {
+          confirmedRevBySegment['leisure'] = (confirmedRevBySegment['leisure'] || 0) + rev;
+        }
+        totalConfirmedRev += rev;
+      }
+    });
+
+    const totalActivePipelineValue = Object.entries(pipelineValueByStage)
+      .filter(([stage]) => stage !== 'lost')
+      .reduce((sum, [_, val]) => sum + val, 0);
+
     return NextResponse.json({
       summary: {
         totalLeads,
@@ -269,6 +331,17 @@ export async function GET(request: Request) {
         potentialRevenue,
       },
       statusCounts,
+      segmentCounts,
+      corporateCount,
+      leisureCount,
+      groupCount,
+      corporatePct,
+      leisurePct,
+      groupPct,
+      confirmedRevBySegment,
+      totalConfirmedRev,
+      pipelineValueByStage,
+      totalActivePipelineValue,
       agentConversion,
       lostReasons,
       sourcePerformance,
