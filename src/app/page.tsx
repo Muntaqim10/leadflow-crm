@@ -469,9 +469,14 @@ export default function App() {
   const currentUserName = currentUserObj?.name || session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || (isMuntaqim ? 'Muntaqim Elahi' : 'User');
   const isGeneralManager = currentUserRole.toLowerCase().includes('general manager') || isArzaan;
   const isFrontDeskSupervisor = currentUserRole.toLowerCase().includes('front desk supervisor') || currentUserRole.toLowerCase().includes('supervisor') || isMuntaqim;
-  const isDirectorOrManager = currentUserRole.toLowerCase().includes('director') || currentUserRole.toLowerCase().includes('manager');
-  const canDeleteLeads = isGeneralManager || isFrontDeskSupervisor || isMuntaqim;
-  const canManageUsers = isGeneralManager || isFrontDeskSupervisor || isMuntaqim || isDirectorOrManager || !session;
+  
+  // Explicit restriction: Rokeya (Director of Sales) and Riham (Sales Manager) cannot delete leads
+  const isRokeya = currentUserEmail.toLowerCase().includes('rokeya') || currentUserName.toLowerCase().includes('rokeya') || currentUserRole.toLowerCase().includes('director');
+  const isRiham = currentUserEmail.toLowerCase().includes('riham') || currentUserName.toLowerCase().includes('riham') || (currentUserRole.toLowerCase().includes('manager') && !isGeneralManager);
+  const isSalesAgent = currentUserRole.toLowerCase().includes('agent');
+
+  const canDeleteLeads = (isGeneralManager || isFrontDeskSupervisor || isMuntaqim) && !isRokeya && !isRiham && !isSalesAgent;
+  const canManageUsers = isGeneralManager || isFrontDeskSupervisor || isMuntaqim;
   const canManageHotelDetails = isGeneralManager || isFrontDeskSupervisor || isMuntaqim;
 
   // Settings State
