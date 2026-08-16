@@ -139,22 +139,22 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             </p>
           </div>
 
-          {/* Thermal Demand Legend & Navigation Controls */}
+          {/* Demand Scale Legend & Navigation Controls */}
           <div className="flex flex-wrap items-center gap-2.5">
             {calendarViewMode === 'demand' && (
               <div className="hidden sm:flex items-center gap-2 text-[11px] text-slate-600 font-medium bg-slate-50 px-3 py-1.5 rounded-lg border border-slate-200 shadow-2xs">
-                <span className="font-bold text-slate-700 text-xs mr-0.5">Heat Scale:</span>
+                <span className="font-bold text-slate-700 text-xs mr-0.5">Demand Scale:</span>
                 <span className="flex items-center gap-1">
                   <span className="w-2.5 h-2.5 rounded bg-white border border-slate-300"></span> Open
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded bg-emerald-100 border border-emerald-300"></span> 1 Light
+                  <span className="w-2.5 h-2.5 rounded bg-emerald-400 border border-emerald-500"></span> Low (1)
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded bg-amber-200 border border-amber-400"></span> 2–3 Warm
+                  <span className="w-2.5 h-2.5 rounded bg-yellow-400 border border-yellow-500"></span> Moderate (2–3)
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded bg-rose-300 border border-rose-500"></span> 4+ 🔥 Hot / Peak
+                  <span className="w-2.5 h-2.5 rounded bg-red-500 border border-red-600"></span> High (4+)
                 </span>
               </div>
             )}
@@ -197,10 +197,10 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
         {/* Scrollable Months Container */}
         <div ref={containerRef} className="flex-1 overflow-y-auto pr-2 scrollbar-thin scroll-smooth space-y-8">
           {monthsData.map((month) => {
-            // Determine Monthly Heat Tier
-            const isHotMonth = month.totalLeads >= 5;
-            const isWarmMonth = month.totalLeads >= 2 && month.totalLeads < 5;
-            const isLightMonth = month.totalLeads === 1;
+            // Determine Monthly Demand Tier
+            const isHighDemandMonth = month.totalLeads >= 5;
+            const isModerateDemandMonth = month.totalLeads >= 2 && month.totalLeads < 5;
+            const isLowDemandMonth = month.totalLeads === 1;
 
             return (
               <div key={month.monthIdx} className="space-y-3">
@@ -222,21 +222,22 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                             </span>
                           </span>
 
-                          {isHotMonth && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-extrabold bg-rose-100 text-rose-800 border border-rose-300 flex items-center gap-1 shadow-2xs">
-                              <Flame className="h-3 w-3 text-rose-600 fill-rose-500 animate-pulse" />
-                              HOT MONTH
+                          {isHighDemandMonth && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-red-100 text-red-800 border border-red-300 flex items-center gap-1 shadow-2xs">
+                              <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>
+                              HIGH DEMAND
                             </span>
                           )}
-                          {isWarmMonth && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-300 flex items-center gap-1">
-                              <Zap className="h-3 w-3 text-amber-600 fill-amber-500" />
-                              WARM DEMAND
+                          {isModerateDemandMonth && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-yellow-100 text-yellow-900 border border-yellow-300 flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-yellow-500"></span>
+                              MODERATE DEMAND
                             </span>
                           )}
-                          {isLightMonth && (
-                            <span className="px-2 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-800 border border-emerald-200">
-                              Building Demand
+                          {isLowDemandMonth && (
+                            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-medium bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-emerald-500"></span>
+                              LOW DEMAND
                             </span>
                           )}
                         </div>
@@ -274,24 +275,25 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                       const revenue = dayData?.revenue || 0;
                       const hasDemand = count > 0;
 
-                      // Determine True Thermal Heat Category
-                      const isPeak = count >= 4 || revenue >= 15000;
-                      const isWarm = (count >= 2 && count <= 3) || revenue >= 5000;
-                      const isLight = count === 1;
+                      // Demand Categories: Red = High (4+), Yellow = Moderate (2-3), Green = Low (1)
+                      const isHigh = count >= 4 || revenue >= 15000;
+                      const isModerate = (count >= 2 && count <= 3) || revenue >= 5000;
+                      const isLow = count === 1;
 
-                      let heatCardClass = 'bg-white border-slate-200 text-slate-400';
+                      let demandCardClass = 'bg-white border-slate-200 text-slate-400';
                       let headerDayColor = 'text-slate-800';
 
-                      if (isPeak) {
-                        heatCardClass =
-                          'bg-gradient-to-br from-rose-50 via-orange-50/80 to-rose-50 border-rose-300 text-rose-950 shadow-xs hover:border-rose-400';
-                        headerDayColor = 'text-rose-950 font-black';
-                      } else if (isWarm) {
-                        heatCardClass =
-                          'bg-gradient-to-br from-amber-50 via-orange-50/50 to-amber-50 border-amber-300 text-amber-950 shadow-2xs hover:border-amber-400';
-                        headerDayColor = 'text-amber-950 font-bold';
-                      } else if (isLight) {
-                        heatCardClass = 'bg-emerald-50/70 border-emerald-200 text-emerald-950 hover:border-emerald-300';
+                      if (isHigh) {
+                        demandCardClass =
+                          'bg-red-50/90 border-red-300 text-red-950 shadow-xs hover:border-red-400';
+                        headerDayColor = 'text-red-950 font-black';
+                      } else if (isModerate) {
+                        demandCardClass =
+                          'bg-yellow-50/90 border-yellow-300 text-yellow-950 shadow-2xs hover:border-yellow-400';
+                        headerDayColor = 'text-yellow-950 font-bold';
+                      } else if (isLow) {
+                        demandCardClass =
+                          'bg-emerald-50/90 border-emerald-300 text-emerald-950 hover:border-emerald-400 shadow-2xs';
                         headerDayColor = 'text-emerald-950 font-bold';
                       }
 
@@ -323,7 +325,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                             hasDemand
                               ? 'cursor-pointer hover:shadow-md hover:scale-[1.01]'
                               : 'cursor-default opacity-85'
-                          } ${heatCardClass}`}
+                          } ${demandCardClass}`}
                         >
                           <div className="flex justify-between items-center opacity-85">
                             <div className="flex items-center gap-1.5">
@@ -341,15 +343,16 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                             <div className="text-left mt-2 space-y-1">
                               <div className="flex items-center justify-between">
                                 <div className="flex items-center gap-1">
-                                  {isPeak && <Flame className="h-3 w-3 text-rose-600 fill-rose-500" />}
-                                  {isWarm && <Zap className="h-3 w-3 text-amber-600 fill-amber-500" />}
+                                  {isHigh && <span className="w-2 h-2 rounded-full bg-red-600 animate-pulse"></span>}
+                                  {isModerate && <span className="w-2 h-2 rounded-full bg-yellow-500"></span>}
+                                  {isLow && <span className="w-2 h-2 rounded-full bg-emerald-500"></span>}
                                   <span className="text-[10px] font-bold block text-slate-900">
                                     {count} Lead{count > 1 ? 's' : ''}
                                   </span>
                                 </div>
                                 <span
                                   className={`text-[9px] font-extrabold ${
-                                    isPeak ? 'text-rose-700' : isWarm ? 'text-amber-700' : 'text-emerald-700'
+                                    isHigh ? 'text-red-700' : isModerate ? 'text-yellow-800' : 'text-emerald-700'
                                   }`}
                                 >
                                   ${Math.round(revenue).toLocaleString()}
@@ -403,8 +406,15 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           {hasDemand && (
                             <div className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 bg-slate-900 text-white rounded-xl p-3 shadow-2xl z-50 pointer-events-none text-xs border border-slate-700 animate-in fade-in zoom-in-95 duration-150">
                               <div className="font-bold border-b border-slate-700 pb-1.5 mb-2 flex justify-between items-center text-slate-200">
-                                <span className="flex items-center gap-1">
-                                  {isPeak ? '🔥' : isWarm ? '⚡' : '🌱'} {dayLabel} Demand
+                                <span className="flex items-center gap-1.5">
+                                  <span
+                                    className={`w-2 h-2 rounded-full ${
+                                      isHigh ? 'bg-red-500' : isModerate ? 'bg-yellow-400' : 'bg-emerald-400'
+                                    }`}
+                                  ></span>
+                                  <span>
+                                    {dayLabel} {isHigh ? 'High Demand' : isModerate ? 'Moderate Demand' : 'Low Demand'}
+                                  </span>
                                 </span>
                                 <span className="text-emerald-400 text-[11px] font-bold">
                                   ${Math.round(revenue).toLocaleString()}
