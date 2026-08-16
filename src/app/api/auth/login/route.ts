@@ -10,8 +10,17 @@ export async function POST(request: Request) {
 
     const supabase = await getSupabaseClient();
     if (supabase) {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-      if (!error && data?.session) {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email: email.trim(),
+        password
+      });
+
+      if (error) {
+        console.error('Supabase login error:', error);
+        return NextResponse.json({ error: error.message || 'Invalid email or password' }, { status: 401 });
+      }
+
+      if (data?.session) {
         const response = NextResponse.json({ session: data.session });
         response.cookies.set('auth_token', data.session.access_token, {
           httpOnly: true,

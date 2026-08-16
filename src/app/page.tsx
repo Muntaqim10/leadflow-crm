@@ -972,19 +972,41 @@ export default function App() {
     setAuthError('');
     setAuthSubmitting(true);
     try {
-      const res = await fetch('/api/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: authEmail, password: authPassword })
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Invalid credentials');
+      let sessionData: any = null;
+
+      // 1. Attempt server login
+      try {
+        const res = await fetch('/api/auth/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: authEmail.trim(), password: authPassword })
+        });
+        const data = await res.json();
+        if (res.ok && data.session) {
+          sessionData = data.session;
+        } else if (!res.ok) {
+          throw new Error(data.error || 'Invalid credentials');
+        }
+      } catch (serverErr: any) {
+        console.warn('Server login failed, trying direct Supabase client sign-in:', serverErr.message);
+        // 2. Direct client-side Supabase sign-in fallback
+        const { data: supaLoginData, error: supaLoginErr } = await supabase.auth.signInWithPassword({
+          email: authEmail.trim(),
+          password: authPassword
+        });
+        if (supaLoginErr) {
+          throw supaLoginErr;
+        }
+        sessionData = supaLoginData.session;
       }
 
-      setSession(data.session);
+      if (!sessionData) {
+        throw new Error('Invalid email or password. Please verify your credentials.');
+      }
+
+      setSession(sessionData);
       if (typeof window !== 'undefined') {
-        localStorage.setItem('leadflow_demo_session', JSON.stringify(data.session));
+        localStorage.setItem('leadflow_demo_session', JSON.stringify(sessionData));
       }
       setSuccessMsg('Signed in successfully!');
     } catch (err: any) {
