@@ -591,13 +591,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       {isAddUserModalOpen && (
         <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold text-slate-900 text-sm">Add Team Member</h3>
-              <button onClick={() => setIsAddUserModalOpen(false)} className="text-slate-400 hover:text-slate-700 text-lg">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Add Team Member</h3>
+                <p className="text-[11px] text-slate-500">Create an account and assign workspace position</p>
+              </div>
+              <button onClick={() => setIsAddUserModalOpen(false)} className="text-slate-400 hover:text-slate-700 text-lg cursor-pointer">
                 &times;
               </button>
             </div>
-            <form onSubmit={handleAddUser} className="space-y-3 text-xs">
+            <form onSubmit={handleAddUser} className="space-y-3.5 text-xs">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Full Name</label>
                 <input
@@ -605,8 +608,8 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   required
                   value={newUserName}
                   onChange={(e) => setNewUserName(e.target.value)}
-                  placeholder="Jane Smith"
-                  className="w-full border border-slate-300 rounded-lg p-2.5 outline-none"
+                  placeholder="e.g. Jane Smith"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-slate-800"
                 />
               </div>
               <div>
@@ -617,22 +620,44 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   value={newUserEmail}
                   onChange={(e) => setNewUserEmail(e.target.value)}
                   placeholder="jane@company.com"
-                  className="w-full border border-slate-300 rounded-lg p-2.5 outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-slate-800"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Assign Role</label>
-                <select
+                <label className="block font-semibold text-slate-700 mb-1">Job Title / Position</label>
+                <input
+                  type="text"
+                  required
                   value={newUserRole}
                   onChange={(e) => setNewUserRole(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg p-2.5 outline-none"
-                >
-                  <option value="Sales Agent">Sales Agent</option>
-                  <option value="Sales Manager">Sales Manager</option>
-                  <option value="Director of Sales">Director of Sales</option>
-                  <option value="Front Desk Supervisor">Front Desk Supervisor</option>
-                  <option value="General Manager">General Manager</option>
-                </select>
+                  placeholder="e.g. Corporate Sales Manager, Front Desk Supervisor"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-slate-800"
+                />
+                {/* Quick-fill Suggestion Chips */}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <span className="text-[10px] text-slate-400 font-medium self-center mr-1">Suggestions:</span>
+                  {[
+                    'Sales Manager',
+                    'Director of Sales',
+                    'Corporate Account Executive',
+                    'Event & Catering Specialist',
+                    'Front Desk Supervisor',
+                    'General Manager'
+                  ].map((sugg) => (
+                    <button
+                      key={sugg}
+                      type="button"
+                      onClick={() => setNewUserRole(sugg)}
+                      className={`text-[10px] px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                        newUserRole === sugg
+                          ? 'bg-blue-50 text-blue-700 border-blue-300 font-bold'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {sugg}
+                    </button>
+                  ))}
+                </div>
               </div>
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Temporary Password (Optional)</label>
@@ -640,22 +665,22 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   type="password"
                   value={newUserPassword}
                   onChange={(e) => setNewUserPassword(e.target.value)}
-                  placeholder="Leave empty to auto-generate"
-                  className="w-full border border-slate-300 rounded-lg p-2.5 outline-none"
+                  placeholder="Leave empty to auto-generate secure password"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-slate-800"
                 />
               </div>
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setIsAddUserModalOpen(false)}
-                  className="flex-1 py-2 bg-slate-100 text-slate-700 rounded-lg"
+                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isAddingUser}
-                  className="flex-1 py-2 bg-blue-600 text-white font-semibold rounded-lg disabled:opacity-50"
+                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
                 >
                   {isAddingUser ? 'Adding...' : 'Create Account'}
                 </button>
@@ -669,13 +694,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
       {editingUser && (
         <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-200">
-            <div className="flex justify-between items-center">
-              <h3 className="font-bold text-slate-900 text-sm">Edit Team Member</h3>
-              <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-slate-700 text-lg">
+            <div className="flex justify-between items-center pb-2 border-b border-slate-100">
+              <div>
+                <h3 className="font-bold text-slate-900 text-sm">Edit Team Member</h3>
+                <p className="text-[11px] text-slate-500">Update name or customize workspace position</p>
+              </div>
+              <button onClick={() => setEditingUser(null)} className="text-slate-400 hover:text-slate-700 text-lg cursor-pointer">
                 &times;
               </button>
             </div>
-            <form onSubmit={handleEditUser} className="space-y-3 text-xs">
+            <form onSubmit={handleEditUser} className="space-y-3.5 text-xs">
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Full Name</label>
                 <input
@@ -683,35 +711,57 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   required
                   value={editUserName}
                   onChange={(e) => setEditUserName(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg p-2.5 outline-none"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-slate-800"
                 />
               </div>
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Role</label>
-                <select
+                <label className="block font-semibold text-slate-700 mb-1">Job Title / Position</label>
+                <input
+                  type="text"
+                  required
                   value={editUserRole}
                   onChange={(e) => setEditUserRole(e.target.value)}
-                  className="w-full border border-slate-300 rounded-lg p-2.5 outline-none"
-                >
-                  <option value="Sales Agent">Sales Agent</option>
-                  <option value="Sales Manager">Sales Manager</option>
-                  <option value="Director of Sales">Director of Sales</option>
-                  <option value="Front Desk Supervisor">Front Desk Supervisor</option>
-                  <option value="General Manager">General Manager</option>
-                </select>
+                  placeholder="e.g. Corporate Sales Manager, Front Desk Supervisor"
+                  className="w-full border border-slate-300 rounded-lg p-2.5 outline-none focus:border-blue-600 focus:ring-1 focus:ring-blue-600 text-slate-800"
+                />
+                {/* Quick-fill Suggestion Chips */}
+                <div className="flex flex-wrap gap-1.5 mt-2">
+                  <span className="text-[10px] text-slate-400 font-medium self-center mr-1">Suggestions:</span>
+                  {[
+                    'Sales Manager',
+                    'Director of Sales',
+                    'Corporate Account Executive',
+                    'Event & Catering Specialist',
+                    'Front Desk Supervisor',
+                    'General Manager'
+                  ].map((sugg) => (
+                    <button
+                      key={sugg}
+                      type="button"
+                      onClick={() => setEditUserRole(sugg)}
+                      className={`text-[10px] px-2 py-0.5 rounded-full border transition-all cursor-pointer ${
+                        editUserRole === sugg
+                          ? 'bg-blue-50 text-blue-700 border-blue-300 font-bold'
+                          : 'bg-slate-50 text-slate-600 border-slate-200 hover:bg-slate-100'
+                      }`}
+                    >
+                      {sugg}
+                    </button>
+                  ))}
+                </div>
               </div>
-              <div className="flex gap-2 pt-2">
+              <div className="flex gap-2 pt-3 border-t border-slate-100">
                 <button
                   type="button"
                   onClick={() => setEditingUser(null)}
-                  className="flex-1 py-2 bg-slate-100 text-slate-700 rounded-lg"
+                  className="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-medium rounded-lg transition-colors cursor-pointer"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={isEditingUserSubmitting}
-                  className="flex-1 py-2 bg-blue-600 text-white font-semibold rounded-lg disabled:opacity-50"
+                  className="flex-1 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg disabled:opacity-50 transition-colors shadow-sm cursor-pointer"
                 >
                   {isEditingUserSubmitting ? 'Saving...' : 'Save Changes'}
                 </button>
