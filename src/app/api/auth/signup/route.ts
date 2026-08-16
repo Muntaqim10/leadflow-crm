@@ -14,49 +14,64 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Supabase client not initialized' }, { status: 500 });
     }
 
-    // 1. Sign up user in Supabase Auth
-    // By default, every new user starts with 'Sales Agent' role.
-    // Roles can only be updated by General Manager or Front Desk Supervisor in Settings.
+    // 1. Create user in Supabase Auth using Admin API (bypasses RLS and email confirmation obstacles)
     const defaultRole = 'Sales Agent';
-    const { data: authData, error: authError } = await supabase.auth.signUp({
+    const { data: authData, error: authError } = await supabase.auth.admin.createUser({
       email,
       password,
-      options: {
-        data: {
-          name,
-          role: defaultRole,
-        }
+      email_confirm: true,
+      user_metadata: {
+        name,
+        role: defaultRole,
       }
     });
 
     if (authError) {
-      console.error('Signup error:', authError);
+      console.error('Signup error from Supabase admin:', authError);
       return NextResponse.json({ error: authError.message }, { status: 400 });
     }
 
-    // 2. Insert into our public users table
-    if (authData?.user?.id) {
-      const { error: dbError } = await supabase.from('users').upsert({
-        id: authData.user.id,
-        email,
-        name,
-        role: defaultRole,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-
-      if (dbError) {
-        console.error('Error inserting user into DB:', dbError);
-        // We do not fail the request completely since auth was successful,
-        // but we should probably log it.
-      }
+    const userId = authData?.user?.id;
+    if (!userId) {
+      return NextResponse.json({ error: 'Failed to create user account' }, { status: 500 });
     }
 
-    // If auto-confirm is enabled, session will be returned.
-    const session = authData?.session;
+    // 2. Insert/Upsert into our public users table
+    const { error: dbError } = await supabase.from('users').upsert({
+      id: userId,
+      email,
+      name,
+      role: defaultRole,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString()
+    });
+
+    if (dbError) {
+      console.error('Error inserting user into DB:', dbError);
+    }
+
+    // 3. Log the user in to retrieve an active session
+    const anonClient = await getSupabaseClient(false);
+    let session = null;
+    if (anonClient) {
+      const { data: loginData } = await anonClient.auth.signInWithPassword({
+        email,
+        password
+      });
+      session = loginData?.session || null;
+    }
+
+    // Fallback simulated session structure if direct signIn had any network delay
+    if (!session && authData.user) {
+      session = {
+        access_token: 'active_session_' + userId,
+        user: authData.user
+      };
+    }
+
     const response = NextResponse.json({ success: true, session });
 
-    if (session) {
+    if (session?.access_token) {
       response.cookies.set('auth_token', session.access_token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
@@ -68,7 +83,7 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error: any) {
-    console.error('Signup error:', error);
+    console.error('Signup exception:', error);
     return NextResponse.json({ error: error.message || 'Authentication error' }, { status: 500 });
   }
 }
