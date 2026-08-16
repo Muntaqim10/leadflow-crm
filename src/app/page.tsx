@@ -459,12 +459,13 @@ export default function App() {
 
   // Authorization Helpers
   const currentUserEmail = session?.user?.email || '';
-  const currentUserObj = users.find(u => u.email?.toLowerCase() === currentUserEmail.toLowerCase());
-  const currentUserRole = currentUserObj?.role || session?.user?.user_metadata?.role || '';
-  const isGeneralManager = currentUserRole.toLowerCase().includes('general manager') || currentUserEmail === 'arzaan@leadflow.com';
-  const isFrontDeskSupervisor = currentUserRole.toLowerCase().includes('front desk supervisor') || currentUserEmail === 'muntaqim@leadflow.com';
-  const isMuntaqim = currentUserEmail === 'muntaqim@leadflow.com';
-  const isArzaan = currentUserEmail === 'arzaan@leadflow.com';
+  const currentUserObj = users.find(u => u.email?.toLowerCase() === currentUserEmail.toLowerCase() || u.id === session?.user?.id);
+  const isMuntaqim = currentUserEmail.toLowerCase() === 'muntaqim@leadflow.com' || currentUserEmail.toLowerCase() === 'muntaquime@gmail.com';
+  const isArzaan = currentUserEmail.toLowerCase() === 'arzaan@leadflow.com';
+  const currentUserRole = currentUserObj?.role || (isMuntaqim ? 'Front Desk Supervisor' : isArzaan ? 'General Manager' : session?.user?.user_metadata?.role || 'Sales Agent');
+  const currentUserName = currentUserObj?.name || session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || (isMuntaqim ? 'Muntaqim Elahi' : 'User');
+  const isGeneralManager = currentUserRole.toLowerCase().includes('general manager') || isArzaan;
+  const isFrontDeskSupervisor = currentUserRole.toLowerCase().includes('front desk supervisor') || isMuntaqim;
   const canDeleteLeads = currentUserEmail !== 'rokeya@leadflow.com' && currentUserEmail !== 'riham@leadflow.com';
   const canManageUsers = isGeneralManager || isFrontDeskSupervisor || isMuntaqim || isArzaan;
   const canManageHotelDetails = isGeneralManager || isFrontDeskSupervisor || isMuntaqim;
@@ -2435,11 +2436,11 @@ export default function App() {
         <div className="p-4 border-t border-white/10 bg-[#162945] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3 overflow-hidden">
             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shrink-0">
-              {session?.user?.user_metadata?.name ? session.user.user_metadata.name.split(' ').map((n: string) => n[0]).join('') : 'U'}
+              {currentUserName ? currentUserName.split(' ').map((n: string) => n[0]).join('') : 'U'}
             </div>
             <div className="overflow-hidden">
-              <div className="text-xs font-bold text-white truncate">{session?.user?.user_metadata?.name || 'User'}</div>
-              <div className="text-[10px] text-blue-200/70 truncate">{session?.user?.user_metadata?.role || 'Sales Agent'}</div>
+              <div className="text-xs font-bold text-white truncate">{currentUserName}</div>
+              <div className="text-[10px] text-blue-200/70 truncate">{currentUserRole || 'Front Desk Supervisor'}</div>
             </div>
           </div>
           <div className="flex items-center gap-1">
