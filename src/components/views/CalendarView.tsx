@@ -92,7 +92,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
   return (
     <div className="h-full flex flex-col animate-fadeIn overflow-hidden">
       <div className="flex-1 bg-white rounded-xl border border-slate-200 shadow-sm p-6 flex flex-col overflow-hidden">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 shrink-0">
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 mb-6 shrink-0">
           <div>
             <div className="flex items-center gap-2 mb-1">
               <CalendarDays className="h-5 w-5 text-blue-600" />
@@ -102,13 +102,23 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             </div>
             <p className="text-xs text-slate-500">
               {calendarViewMode === 'demand'
-                ? 'Fully scrollable annual calendar showing inquiry volume. Hover over days to see requested leads and potential revenue metrics.'
+                ? 'Annual demand intelligence showing inquiry compression and requested stay dates across all active leads.'
                 : 'Annual scheduled client tours, phone calls, and virtual meetings. Hover over days to view and edit appointment logs.'}
             </p>
           </div>
 
-          {/* Quick Jump to Today & View Toggle */}
-          <div className="flex items-center gap-2.5">
+          {/* Demand Legend (in Demand Mode) & Quick Jump / View Toggle */}
+          <div className="flex flex-wrap items-center gap-2.5">
+            {calendarViewMode === 'demand' && (
+              <div className="hidden sm:flex items-center gap-2.5 text-[11px] text-slate-500 font-medium bg-slate-50 px-2.5 py-1.5 rounded-lg border border-slate-200">
+                <span className="font-bold text-slate-700 text-xs">Demand:</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-white border border-slate-300"></span> Open</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-blue-100 border border-blue-300"></span> 1 Lead</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-blue-200 border border-blue-400"></span> 2-3 Moderate</span>
+                <span className="flex items-center gap-1"><span className="w-2 h-2 rounded bg-indigo-200 border border-indigo-400"></span> 4+ High</span>
+              </div>
+            )}
+
             <button
               onClick={handleJumpToToday}
               type="button"
@@ -161,20 +171,21 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   const dayData = heatmap?.[dateStr];
                   const count = dayData?.count || 0;
                   const revenue = dayData?.revenue || 0;
+                  const hasDemand = count > 0;
 
                   // Shade color based on count
-                  let shadeClass = 'bg-white border-slate-200 text-slate-500 hover:border-slate-300';
-                  if (count > 0 && count <= 1) shadeClass = 'bg-blue-50/50 border-blue-100 text-blue-700 font-semibold';
+                  let shadeClass = 'bg-white border-slate-200 text-slate-400';
+                  if (count > 0 && count <= 1) shadeClass = 'bg-blue-50/70 border-blue-200 text-blue-800 font-semibold shadow-xs';
                   else if (count > 1 && count <= 3)
-                    shadeClass = 'bg-blue-100/50 border-blue-200 text-blue-800 font-semibold';
-                  else if (count > 3) shadeClass = 'bg-indigo-100/50 border-indigo-200 text-indigo-800 font-semibold';
+                    shadeClass = 'bg-blue-100/70 border-blue-300 text-blue-900 font-semibold shadow-xs';
+                  else if (count > 3) shadeClass = 'bg-indigo-100/80 border-indigo-300 text-indigo-900 font-bold shadow-xs';
 
                   return (
                     <div
                       key={idx}
                       id={isToday ? 'calendar-today' : undefined}
                       onClick={() => {
-                        if (dayData && dayData.leads && dayData.leads.length > 0) {
+                        if (hasDemand && dayData?.leads && dayData.leads.length > 0) {
                           if (dayData.leads.length === 1) {
                             const fullLead = leads.find((l) => l.id === dayData.leads[0].id);
                             if (fullLead) {
@@ -189,21 +200,17 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                             setSelectedCalendarDate(dateStr);
                             setIsDayLeadsModalOpen(true);
                           }
-                        } else if (dateStr >= todayStr) {
-                          resetLeadForm();
-                          setFormCheckIn(dateStr);
-                          setIsNewLeadModalOpen(true);
                         }
                       }}
-                      className={`group relative p-3 rounded-lg border text-sm min-h-[95px] flex flex-col justify-between transition-all shadow-sm ${
-                        isToday ? 'ring-2 ring-blue-500 border-blue-500' : ''
+                      className={`group relative p-3 rounded-lg border text-sm min-h-[95px] flex flex-col justify-between transition-all ${
+                        isToday ? 'ring-2 ring-blue-500 border-blue-500 bg-blue-50/20' : ''
                       } ${
-                        (dayData && dayData.leads && dayData.leads.length > 0) || dateStr >= todayStr
+                        hasDemand
                           ? 'cursor-pointer hover:border-blue-400 hover:shadow-md'
-                          : 'cursor-not-allowed opacity-75'
+                          : 'cursor-default opacity-85'
                       } ${shadeClass}`}
                     >
-                      <div className="flex justify-between items-center opacity-75">
+                      <div className="flex justify-between items-center opacity-80">
                         <div className="flex items-center gap-1.5">
                           <span className="font-bold text-[11px] text-slate-800">{dayLabel}</span>
                           {isToday && (
@@ -215,7 +222,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                         <span className="text-[9px] font-medium tracking-wide uppercase">{weekdayLabel}</span>
                       </div>
 
-                      {count > 0 ? (
+                      {hasDemand ? (
                         <div className="text-left mt-2 space-y-1">
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] font-bold block text-slate-800">
@@ -263,13 +270,14 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                           </div>
                         </div>
                       ) : (
-                        <span className="text-[9px] text-slate-400 self-start mt-2 hover:text-blue-600 transition-colors">
-                          + Add lead
-                        </span>
+                        <div className="flex items-center gap-1 text-[10px] text-slate-300 font-medium self-start mt-2">
+                          <span className="w-1.5 h-1.5 rounded-full bg-slate-200"></span>
+                          <span>Open</span>
+                        </div>
                       )}
 
                       {/* Hover Popover Tooltip */}
-                      {count > 0 && (
+                      {hasDemand && (
                         <div className="hidden group-hover:block absolute left-1/2 -translate-x-1/2 bottom-full mb-2 w-64 bg-slate-900 text-white rounded-xl p-3 shadow-2xl z-50 pointer-events-none text-xs border border-slate-700 animate-in fade-in zoom-in-95 duration-150">
                           <div className="font-bold border-b border-slate-700 pb-1.5 mb-2 flex justify-between items-center text-slate-200">
                             <span>{dayLabel} Leads</span>
