@@ -458,7 +458,7 @@ export default function App() {
   const [selectedCalendarDate, setSelectedCalendarDate] = useState<string | null>(null);
   const [selectedDayLeads, setSelectedDayLeads] = useState<any[]>([]);
   const [isDayLeadsModalOpen, setIsDayLeadsModalOpen] = useState(false);
-  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'global' | 'users' | 'hotel'>('profile');
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'profile' | 'global' | 'templates' | 'users' | 'hotel'>('profile');
 
   // Authorization Helpers
   const currentUserEmail = session?.user?.email || '';
@@ -515,6 +515,51 @@ export default function App() {
   const handleSaveProfile = () => setSuccessMsg('Profile updated successfully!');
   const handleSaveGlobalVars = () => setSuccessMsg('Global variables updated successfully!');
   const handleSaveHotelDetails = () => setSuccessMsg('Hotel details updated successfully!');
+
+  // Settings Email Template State
+  const [selectedSettingsTemplateType, setSelectedSettingsTemplateType] = useState<string>('thank_you');
+  const [editingTemplateContent, setEditingTemplateContent] = useState<string>('');
+  const [isSavingTemplate, setIsSavingTemplate] = useState<boolean>(false);
+
+  useEffect(() => {
+    const t = templates.find(item => item.template_type === selectedSettingsTemplateType);
+    if (t) {
+      setEditingTemplateContent(t.content || '');
+    } else {
+      if (selectedSettingsTemplateType === 'thank_you') {
+        setEditingTemplateContent(`Dear {guest_name},\n\nThank you for reaching out regarding your upcoming stay with us from {check_in} to {check_out}.\n\nWe are delighted to assist with your booking and look forward to welcoming you to {hotel_name}.\n\nBest regards,\nSales & Guest Experience Team`);
+      } else if (selectedSettingsTemplateType === 'follow_up_reminder') {
+        setEditingTemplateContent(`Dear {guest_name},\n\nI wanted to follow up on the custom group proposal we prepared for your stay from {check_in} to {check_out}.\n\nPlease let us know if you have any questions or would like to secure the agreed dates.\n\nWarm regards,\nSales Team`);
+      } else if (selectedSettingsTemplateType === 'gentle_reminder') {
+        setEditingTemplateContent(`Hi {guest_name},\n\nJust checking in regarding your pending reservation for {check_in}.\n\nDates for this period are filling up fast, and we want to ensure we hold your preferred rates and rooms.\n\nBest,\nSales Team`);
+      } else if (selectedSettingsTemplateType === 'booking_confirmation') {
+        setEditingTemplateContent(`Dear {guest_name},\n\nWe are thrilled to confirm your booking at {hotel_name} from {check_in} to {check_out}!\n\nYour agreement details and schedule have been finalized. Please reach out if you need anything prior to arrival.\n\nWarm regards,\nFront Desk & Sales Team`);
+      } else if (selectedSettingsTemplateType === 'feedback_request') {
+        setEditingTemplateContent(`Dear {guest_name},\n\nThank you for considering {hotel_name} for your event from {check_in} to {check_out}.\n\nWe would love to know if there is anything we could have done differently to better suit your needs.\n\nSincerely,\nGuest Services`);
+      }
+    }
+  }, [selectedSettingsTemplateType, templates]);
+
+  const handleSaveSettingsTemplate = async () => {
+    setIsSavingTemplate(true);
+    try {
+      const res = await fetch('/api/templates', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          template_type: selectedSettingsTemplateType,
+          content: editingTemplateContent
+        })
+      });
+      if (!res.ok) throw new Error('Failed to save template');
+      mutate('/api/templates');
+      setSuccessMsg('Email template saved successfully!');
+    } catch (err: any) {
+      setErrorMsg(err.message || 'Failed to save template');
+    } finally {
+      setIsSavingTemplate(false);
+    }
+  };
 
   const handleAddUser = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -2524,20 +2569,6 @@ export default function App() {
               </div>
               <ChevronRight className={`h-3 w-3 opacity-60 ${activeTab === 'heatmap' ? 'block' : 'hidden'}`} />
             </button>
-
-            <button
-              onClick={() => setActiveTab('templates')}
-              className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-all ${activeTab === 'templates'
-                  ? 'bg-blue-600/10 text-sky-400 border border-blue-500/20'
-                  : 'text-slate-200 hover:text-white hover:bg-white/10'
-                }`}
-            >
-              <div className="flex items-center gap-3">
-                <Mail className="h-4 w-4" />
-                <span>Email Templates</span>
-              </div>
-              <ChevronRight className={`h-3 w-3 opacity-60 ${activeTab === 'templates' ? 'block' : 'hidden'}`} />
-            </button>
           </nav>
         </div>
 
@@ -4002,51 +4033,6 @@ export default function App() {
                 </div>
               )}
 
-              {/* Tab 5: Email Templates */}
-              {activeTab === 'templates' && (
-                <div className="space-y-6 animate-fadeIn">
-                  <div className="bg-white rounded-xl border border-slate-200 shadow-sm p-6">
-                    <h3 className="font-bold text-slate-800 text-base mb-6">AI Email Template Library</h3>
-                    <p className="text-xs text-slate-500 mb-6">
-                      Customize template contents used by the AI engine. Wrap variables like <code>{"{guest_name}"}</code>, <code>{"{check_in}"}</code>, <code>{"{check_out}"}</code>, or <code>{"{details}"}</code> in brackets to auto-fill them.
-                    </p>
-
-                    <div className="space-y-6">
-                      {['thank_you', 'follow_up_reminder', 'gentle_reminder'].map((type) => {
-                        const template = templates.find(t => t.template_type === type);
-                        return (
-                          <div key={type} className="p-4 bg-white rounded-lg border border-slate-200 space-y-3">
-                            <div className="flex justify-between items-center">
-                              <span className="text-xs font-bold text-sky-400 capitalize">{type.replace(/_/g, ' ')}</span>
-                            </div>
-                            <textarea
-                              className="w-full h-32 bg-[#0B0F19] border border-slate-700 rounded-lg p-3 text-xs text-[#E2E8F0] font-mono leading-relaxed focus:border-[#1F3A60] focus:ring-1 focus:ring-[#1F3A60] outline-none"
-                              defaultValue={template?.content || ''}
-                              onBlur={async (e) => {
-                                try {
-                                  await fetch('/api/templates', {
-                                    method: 'POST',
-                                    headers: { 'Content-Type': 'application/json' },
-                                    body: JSON.stringify({
-                                      template_type: type,
-                                      content: e.target.value,
-                                    }),
-                                  });
-                                  setSuccessMsg('Template saved successfully!');
-                                  fetchData();
-                                } catch (err) {
-                                  setErrorMsg('Failed to update template');
-                                }
-                              }}
-                            />
-                          </div>
-                        );
-                      })}
-                    </div>
-                  </div>
-                </div>
-              )}
-
             </>
           )}
         </div>
@@ -4826,6 +4812,12 @@ export default function App() {
                     >
                       Global Variables
                     </button>
+                    <button
+                      onClick={() => setActiveSettingsTab('templates')}
+                      className={`w-full text-left px-3 py-2.5 rounded-lg text-sm font-medium transition-all ${activeSettingsTab === 'templates' ? 'bg-blue-50 text-blue-700' : 'text-slate-600 hover:bg-slate-100 hover:text-slate-900'}`}
+                    >
+                      Email Templates
+                    </button>
                     {canManageUsers && (
                       <button
                         onClick={() => setActiveSettingsTab('users')}
@@ -4856,6 +4848,7 @@ export default function App() {
                 <h3 className="font-semibold text-slate-800">
                   {activeSettingsTab === 'profile' && 'Personal Profile'}
                   {activeSettingsTab === 'global' && 'Global Variables'}
+                  {activeSettingsTab === 'templates' && 'AI Email Templates'}
                   {activeSettingsTab === 'users' && 'Team Management'}
                   {activeSettingsTab === 'hotel' && 'Workspace Profile'}
                 </h3>
@@ -4901,6 +4894,81 @@ export default function App() {
                         <input type="number" className="w-full border border-slate-300 rounded-md p-2 text-sm" value={globalGratuity} onChange={e => setGlobalGratuity(e.target.value)} />
                       </div>
                       <button onClick={handleSaveGlobalVars} className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-md text-sm font-medium hover:bg-blue-700 w-max">Save Changes</button>
+                    </div>
+                  </div>
+                )}
+
+                {activeSettingsTab === 'templates' && (
+                  <div className="max-w-3xl space-y-6">
+                    <div>
+                      <h4 className="text-lg font-semibold text-slate-900">AI Email Templates</h4>
+                      <p className="text-sm text-slate-500">Configure standard email templates and dynamic merge variables used across your workflow.</p>
+                    </div>
+
+                    {/* Template Selector Tabs */}
+                    <div className="flex flex-wrap gap-2 border-b border-slate-200 pb-3">
+                      {[
+                        { key: 'thank_you', label: 'Thank You Email' },
+                        { key: 'follow_up_reminder', label: 'Proposal Follow-Up' },
+                        { key: 'gentle_reminder', label: 'Gentle Reminder' },
+                        { key: 'booking_confirmation', label: 'Booking Confirmation' },
+                        { key: 'feedback_request', label: 'Feedback Request' }
+                      ].map(t => (
+                        <button
+                          key={t.key}
+                          type="button"
+                          onClick={() => setSelectedSettingsTemplateType(t.key)}
+                          className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all ${
+                            selectedSettingsTemplateType === t.key
+                              ? 'bg-blue-600 text-white shadow-xs'
+                              : 'bg-white text-slate-600 hover:bg-slate-100 border border-slate-200'
+                          }`}
+                        >
+                          {t.label}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Merge Variables Info Chips */}
+                    <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-2">
+                      <div className="text-xs font-semibold text-slate-700">Available Merge Variables (click to insert):</div>
+                      <div className="flex flex-wrap gap-1.5 text-xs font-mono">
+                        {['{guest_name}', '{check_in}', '{check_out}', '{hotel_name}', '{room_rate}', '{details}'].map(v => (
+                          <button
+                            key={v}
+                            type="button"
+                            onClick={() => setEditingTemplateContent(prev => prev + ' ' + v)}
+                            className="bg-white hover:bg-blue-50 text-slate-700 hover:text-blue-700 border border-slate-200 px-2 py-0.5 rounded text-[11px] transition-colors cursor-pointer"
+                            title={`Insert ${v}`}
+                          >
+                            + {v}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Clean Editor */}
+                    <div className="space-y-2">
+                      <label className="block text-xs font-semibold text-slate-700">Template Body</label>
+                      <textarea
+                        rows={10}
+                        value={editingTemplateContent}
+                        onChange={(e) => setEditingTemplateContent(e.target.value)}
+                        className="w-full bg-white border border-slate-300 rounded-xl p-3.5 text-xs text-slate-900 font-sans leading-relaxed focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none shadow-2xs resize-y"
+                        placeholder="Write your email template content here..."
+                      />
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2">
+                      <span className="text-xs text-slate-400">Templates are automatically formatted with the AI engine for each recipient.</span>
+                      <button
+                        type="button"
+                        onClick={handleSaveSettingsTemplate}
+                        disabled={isSavingTemplate}
+                        className="px-5 py-2.5 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-xs"
+                      >
+                        {isSavingTemplate ? 'Saving...' : 'Save Template'}
+                      </button>
                     </div>
                   </div>
                 )}
