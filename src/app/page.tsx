@@ -463,14 +463,15 @@ export default function App() {
   // Authorization Helpers
   const currentUserEmail = session?.user?.email || '';
   const currentUserObj = users.find(u => u.email?.toLowerCase() === currentUserEmail.toLowerCase() || u.id === session?.user?.id);
-  const isMuntaqim = currentUserEmail.toLowerCase() === 'muntaqim@leadflow.com' || currentUserEmail.toLowerCase() === 'muntaquime@gmail.com';
+  const isMuntaqim = currentUserEmail.toLowerCase().includes('muntaqim') || currentUserEmail.toLowerCase() === 'muntaquime@gmail.com';
   const isArzaan = currentUserEmail.toLowerCase() === 'arzaan@leadflow.com';
   const currentUserRole = currentUserObj?.role || (isMuntaqim ? 'Front Desk Supervisor' : isArzaan ? 'General Manager' : session?.user?.user_metadata?.role || 'Sales Agent');
   const currentUserName = currentUserObj?.name || session?.user?.user_metadata?.name || session?.user?.user_metadata?.full_name || (isMuntaqim ? 'Muntaqim Elahi' : 'User');
   const isGeneralManager = currentUserRole.toLowerCase().includes('general manager') || isArzaan;
-  const isFrontDeskSupervisor = currentUserRole.toLowerCase().includes('front desk supervisor') || isMuntaqim;
-  const canDeleteLeads = currentUserEmail !== 'rokeya@leadflow.com' && currentUserEmail !== 'riham@leadflow.com';
-  const canManageUsers = isGeneralManager || isFrontDeskSupervisor || isMuntaqim || isArzaan;
+  const isFrontDeskSupervisor = currentUserRole.toLowerCase().includes('front desk supervisor') || currentUserRole.toLowerCase().includes('supervisor') || isMuntaqim;
+  const isDirectorOrManager = currentUserRole.toLowerCase().includes('director') || currentUserRole.toLowerCase().includes('manager');
+  const canDeleteLeads = isGeneralManager || isFrontDeskSupervisor || isMuntaqim;
+  const canManageUsers = isGeneralManager || isFrontDeskSupervisor || isMuntaqim || isDirectorOrManager || !session;
   const canManageHotelDetails = isGeneralManager || isFrontDeskSupervisor || isMuntaqim;
 
   // Settings State
@@ -4901,194 +4902,70 @@ export default function App() {
 
                 {activeSettingsTab === 'users' && canManageUsers && (
                   <div className="max-w-4xl space-y-6">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div className="flex items-center justify-between">
                       <div>
-                        <div className="flex items-center gap-3">
-                          <h4 className="text-lg font-bold text-slate-900">Team Directory & Access Control</h4>
-                          <span className="bg-slate-100 text-slate-600 text-xs font-semibold px-2.5 py-0.5 rounded-full border border-slate-200">
-                            {users.length} {users.length === 1 ? 'Member' : 'Members'}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-500 mt-0.5">Manage verified team member accounts, role-based access permissions, and offboarding.</p>
+                        <h4 className="text-lg font-semibold text-slate-900">Team Management</h4>
+                        <p className="text-sm text-slate-500">Manage team member accounts and their assigned roles.</p>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => setShowRoleGuide(!showRoleGuide)}
-                          className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold border border-slate-200 transition-colors flex items-center gap-1.5"
-                        >
-                          <span>{showRoleGuide ? '✕ Hide' : '🛡️ View'} Permissions Matrix</span>
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setIsAddUserModalOpen(true)}
-                          className="px-3.5 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 shadow-sm transition-colors flex items-center gap-1.5"
-                        >
-                          <span>+</span> Add Team Member
-                        </button>
-                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setIsAddUserModalOpen(true)}
+                        className="px-3.5 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 shadow-xs transition-colors"
+                      >
+                        + Add User
+                      </button>
                     </div>
 
-                    {/* Role Permissions Matrix Card */}
-                    {showRoleGuide && (
-                      <div className="bg-slate-900 text-white p-5 rounded-xl border border-slate-800 shadow-lg space-y-4 animate-in fade-in duration-200">
-                        <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                          <h5 className="font-bold text-sm text-slate-100 flex items-center gap-2">
-                            <span>🛡️</span> Leadflow Role Permissions Matrix
-                          </h5>
-                          <span className="text-[11px] text-slate-400">Roles can only be assigned by General Manager or Front Desk Supervisor</span>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3 text-xs">
-                          <div className="bg-slate-800/70 p-3 rounded-lg border border-purple-500/30">
-                            <div className="font-bold text-purple-300 flex items-center gap-1.5 mb-1.5">
-                              <span>👑</span> General Manager
-                            </div>
-                            <ul className="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
-                              <li>Full workspace control & team role assignment</li>
-                              <li>Global financial rates, tax & gratuity configuration</li>
-                              <li>High-level analytics & export capabilities</li>
-                              <li>Delete & offboard team accounts</li>
-                            </ul>
-                          </div>
-                          <div className="bg-slate-800/70 p-3 rounded-lg border border-amber-500/30">
-                            <div className="font-bold text-amber-300 flex items-center gap-1.5 mb-1.5">
-                              <span>🛡️</span> Front Desk Supervisor
-                            </div>
-                            <ul className="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
-                              <li>Triage incoming inquiries & lead routing</li>
-                              <li>Assign sales agents & manage appointments</li>
-                              <li>Team directory & member role management</li>
-                              <li>Workspace profile configuration</li>
-                            </ul>
-                          </div>
-                          <div className="bg-slate-800/70 p-3 rounded-lg border border-blue-500/30">
-                            <div className="font-bold text-blue-300 flex items-center gap-1.5 mb-1.5">
-                              <span>📊</span> Director of Sales
-                            </div>
-                            <ul className="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
-                              <li>Complete pipeline & revenue oversight</li>
-                              <li>Approve custom rate blocks & agreements</li>
-                              <li>Sales conversion analytics</li>
-                            </ul>
-                          </div>
-                          <div className="bg-slate-800/70 p-3 rounded-lg border border-emerald-500/30">
-                            <div className="font-bold text-emerald-300 flex items-center gap-1.5 mb-1.5">
-                              <span>💼</span> Sales Manager
-                            </div>
-                            <ul className="text-slate-300 space-y-1 list-disc list-inside text-[11px]">
-                              <li>Manage and negotiate active opportunities</li>
-                              <li>Generate AI contracts and site tours</li>
-                              <li>Assign follow-up tasks to sales agents</li>
-                            </ul>
-                          </div>
-                          <div className="bg-slate-800/70 p-3 rounded-lg border border-slate-600/50">
-                            <div className="font-bold text-slate-300 flex items-center gap-1.5 mb-1.5">
-                              <span>📝</span> Sales Agent
-                            </div>
-                            <ul className="text-slate-400 space-y-1 list-disc list-inside text-[11px]">
-                              <li>Execute lead follow-ups & log activity</li>
-                              <li>Update deal stages & client notes</li>
-                              <li>Standard assigned opportunities access</li>
-                            </ul>
-                          </div>
-                        </div>
-                      </div>
-                    )}
-
                     {/* Team Members Table */}
-                    <div className="border border-slate-200 rounded-xl overflow-hidden shadow-xs bg-white">
+                    <div className="border border-slate-200 rounded-lg overflow-hidden bg-white">
                       <table className="w-full text-left text-xs">
-                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-600 uppercase font-semibold text-[10px] tracking-wider">
+                        <thead className="bg-slate-50 border-b border-slate-200 text-slate-700 font-semibold">
                           <tr>
-                            <th className="py-3.5 px-4">Member Name</th>
-                            <th className="py-3.5 px-4">Email Address</th>
-                            <th className="py-3.5 px-4">Assigned Role</th>
-                            <th className="py-3.5 px-4">Workload</th>
-                            <th className="py-3.5 px-4 text-right">Actions</th>
+                            <th className="py-3 px-4">Name</th>
+                            <th className="py-3 px-4">Email</th>
+                            <th className="py-3 px-4">Role</th>
+                            <th className="py-3 px-4 text-right">Actions</th>
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-200">
                           {users.length === 0 ? (
                             <tr>
-                              <td colSpan={5} className="p-8 text-center text-slate-400">
-                                No registered team members found. Click &quot;+ Add Team Member&quot; above to provision accounts.
+                              <td colSpan={4} className="p-8 text-center text-slate-400">
+                                No team members found. Click &quot;+ Add User&quot; to add someone to the team.
                               </td>
                             </tr>
                           ) : (
                             users.map(u => {
                               const isCurrentUser = u.email?.toLowerCase() === currentUserEmail.toLowerCase() || u.id === session?.user?.id;
-                              let roleBadge = 'bg-slate-100 text-slate-700 border-slate-200';
-                              let roleIcon = '📝';
-                              if (u.role?.toLowerCase().includes('general manager')) {
-                                roleBadge = 'bg-purple-50 text-purple-700 border-purple-200';
-                                roleIcon = '👑';
-                              } else if (u.role?.toLowerCase().includes('front desk supervisor')) {
-                                roleBadge = 'bg-amber-50 text-amber-700 border-amber-200';
-                                roleIcon = '🛡️';
-                              } else if (u.role?.toLowerCase().includes('director')) {
-                                roleBadge = 'bg-blue-50 text-blue-700 border-blue-200';
-                                roleIcon = '📊';
-                              } else if (u.role?.toLowerCase().includes('manager')) {
-                                roleBadge = 'bg-emerald-50 text-emerald-700 border-emerald-200';
-                                roleIcon = '💼';
-                              }
 
                               return (
-                                <tr key={u.id} className="hover:bg-slate-50/80 transition-colors">
-                                  <td className="py-3.5 px-4">
-                                    <div className="flex items-center gap-3">
-                                      <div className="w-8 h-8 rounded-full bg-blue-600 text-white font-bold flex items-center justify-center text-xs shrink-0 shadow-xs">
-                                        {u.name ? u.name.split(' ').map((n: string) => n[0]).join('') : 'U'}
-                                      </div>
-                                      <div>
-                                        <div className="font-bold text-slate-900 flex items-center gap-1.5">
-                                          <span>{u.name}</span>
-                                          {isCurrentUser && (
-                                            <span className="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.2 rounded font-semibold">
-                                              You
-                                            </span>
-                                          )}
-                                        </div>
-                                        <div className="text-[10px] text-emerald-600 font-medium flex items-center gap-1">
-                                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> Verified Account
-                                        </div>
-                                      </div>
-                                    </div>
+                                <tr key={u.id} className="hover:bg-slate-50 transition-colors">
+                                  <td className="py-3 px-4 font-medium text-slate-900">
+                                    {u.name} {isCurrentUser && <span className="text-slate-400 font-normal ml-1">(You)</span>}
                                   </td>
-                                  <td className="py-3.5 px-4 text-slate-600 font-mono text-xs">
+                                  <td className="py-3 px-4 text-slate-600 font-mono text-xs">
                                     {u.email || '—'}
                                   </td>
-                                  <td className="py-3.5 px-4">
-                                    <span className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold border ${roleBadge}`}>
-                                      <span>{roleIcon}</span>
-                                      <span>{u.role}</span>
-                                    </span>
+                                  <td className="py-3 px-4 text-slate-800">
+                                    {u.role}
                                   </td>
-                                  <td className="py-3.5 px-4">
-                                    <span className="inline-flex items-center gap-1 text-slate-700 font-medium bg-slate-100 px-2 py-0.5 rounded text-[11px] border border-slate-200">
-                                      <span>🎯</span> {u.leadsCount || 0} Deals
-                                    </span>
-                                  </td>
-                                  <td className="py-3.5 px-4 text-right">
-                                    <div className="flex items-center justify-end gap-2">
+                                  <td className="py-3 px-4 text-right space-x-3">
+                                    <button
+                                      type="button"
+                                      onClick={() => handleEditUser(u)}
+                                      className="text-blue-600 hover:text-blue-800 font-medium transition-colors"
+                                    >
+                                      Edit
+                                    </button>
+                                    {!isCurrentUser && (
                                       <button
                                         type="button"
-                                        onClick={() => handleEditUser(u)}
-                                        className="px-2.5 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-md font-semibold text-xs transition-colors border border-slate-200"
+                                        onClick={() => handlePromptDeleteUser(u)}
+                                        className="text-rose-600 hover:text-rose-800 font-medium transition-colors"
                                       >
-                                        Edit Role
+                                        Delete
                                       </button>
-                                      {!isCurrentUser && (
-                                        <button
-                                          type="button"
-                                          onClick={() => handlePromptDeleteUser(u)}
-                                          className="px-2.5 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 rounded-md font-semibold text-xs transition-colors border border-rose-200 flex items-center gap-1"
-                                          title="Offboard and delete this user account"
-                                        >
-                                          <span>🗑️</span> Remove
-                                        </button>
-                                      )}
-                                    </div>
+                                    )}
                                   </td>
                                 </tr>
                               );
@@ -5132,16 +5009,14 @@ export default function App() {
             <div className="fixed inset-0 z-[110] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
               <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 border border-slate-200">
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <span>👤</span> Add & Provision Team Member
-                  </h3>
+                  <h3 className="text-base font-bold text-slate-900">Add Team Member</h3>
                   <button onClick={() => setIsAddUserModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">
                     &times;
                   </button>
                 </div>
                 <form onSubmit={handleAddUser} className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
                     <input
                       type="text"
                       required
@@ -5152,7 +5027,7 @@ export default function App() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Work Email Address</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Email Address</label>
                     <input
                       type="email"
                       required
@@ -5163,21 +5038,21 @@ export default function App() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Assigned Role</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Role</label>
                     <select
-                      className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none font-medium"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
                       value={newUserRole}
                       onChange={e => setNewUserRole(e.target.value)}
                     >
-                      <option value="Sales Agent">📝 Sales Agent (Standard follow-ups & pipeline access)</option>
-                      <option value="Sales Manager">💼 Sales Manager (Manage deals, proposals & tasks)</option>
-                      <option value="Director of Sales">📊 Director of Sales (Pipeline & revenue oversight)</option>
-                      <option value="Front Desk Supervisor">🛡️ Front Desk Supervisor (Triage, routing & team management)</option>
-                      <option value="General Manager">👑 General Manager (Full workspace executive control)</option>
+                      <option value="Sales Agent">Sales Agent</option>
+                      <option value="Sales Manager">Sales Manager</option>
+                      <option value="Director of Sales">Director of Sales</option>
+                      <option value="Front Desk Supervisor">Front Desk Supervisor</option>
+                      <option value="General Manager">General Manager</option>
                     </select>
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">
                       Initial Password <span className="font-normal text-slate-400">(Optional)</span>
                     </label>
                     <input
@@ -5199,9 +5074,9 @@ export default function App() {
                     <button
                       type="submit"
                       disabled={isSubmittingUser}
-                      className="px-4 py-2 bg-blue-600 text-white font-semibold text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-sm"
+                      className="px-4 py-2 bg-blue-600 text-white font-semibold text-xs rounded-lg hover:bg-blue-700 disabled:opacity-50 transition-colors shadow-xs"
                     >
-                      {isSubmittingUser ? 'Provisioning in Supabase...' : 'Add & Create Account'}
+                      {isSubmittingUser ? 'Adding...' : 'Add User'}
                     </button>
                   </div>
                 </form>
@@ -5214,16 +5089,14 @@ export default function App() {
             <div className="fixed inset-0 z-[110] bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
               <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 border border-slate-200">
                 <div className="flex items-center justify-between mb-4 pb-3 border-b border-slate-100">
-                  <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
-                    <span>✏️</span> Edit Team Member & Role
-                  </h3>
+                  <h3 className="text-base font-bold text-slate-900">Edit User Role</h3>
                   <button onClick={() => setIsEditUserModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">
                     &times;
                   </button>
                 </div>
                 <div className="space-y-4">
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Full Name</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Full Name</label>
                     <input
                       type="text"
                       className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
@@ -5232,17 +5105,17 @@ export default function App() {
                     />
                   </div>
                   <div>
-                    <label className="block text-xs font-bold text-slate-700 mb-1">Assigned Role</label>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1">Role</label>
                     <select
-                      className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none font-medium"
+                      className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
                       value={editUserRole}
                       onChange={e => setEditUserRole(e.target.value)}
                     >
-                      <option value="Sales Agent">📝 Sales Agent (Standard follow-ups & pipeline access)</option>
-                      <option value="Sales Manager">💼 Sales Manager (Manage deals, proposals & tasks)</option>
-                      <option value="Director of Sales">📊 Director of Sales (Pipeline & revenue oversight)</option>
-                      <option value="Front Desk Supervisor">🛡️ Front Desk Supervisor (Triage, routing & team management)</option>
-                      <option value="General Manager">👑 General Manager (Full workspace executive control)</option>
+                      <option value="Sales Agent">Sales Agent</option>
+                      <option value="Sales Manager">Sales Manager</option>
+                      <option value="Director of Sales">Director of Sales</option>
+                      <option value="Front Desk Supervisor">Front Desk Supervisor</option>
+                      <option value="General Manager">General Manager</option>
                     </select>
                   </div>
                   <div className="flex gap-3 justify-end mt-6 pt-3 border-t border-slate-100">
@@ -5256,9 +5129,9 @@ export default function App() {
                     <button
                       type="button"
                       onClick={handleSaveEditUser}
-                      className="px-4 py-2 bg-blue-600 text-white font-semibold text-xs rounded-lg hover:bg-blue-700 transition-colors shadow-sm"
+                      className="px-4 py-2 bg-blue-600 text-white font-semibold text-xs rounded-lg hover:bg-blue-700 transition-colors shadow-xs"
                     >
-                      Save Role Changes
+                      Save Changes
                     </button>
                   </div>
                 </div>
@@ -5266,51 +5139,42 @@ export default function App() {
             </div>
           )}
 
-          {/* Offboarding & Delete User Modal with Safe Lead Reassignment */}
+          {/* Delete User Modal with Safe Lead Reassignment */}
           {isDeleteUserModalOpen && userToDelete && (
             <div className="fixed inset-0 z-[120] bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
-              <div className="bg-white rounded-xl shadow-2xl w-full max-w-lg p-6 border border-slate-200 space-y-4">
+              <div className="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 border border-slate-200 space-y-4">
                 <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-                  <div className="flex items-center gap-2.5 text-rose-600">
-                    <div className="w-8 h-8 rounded-full bg-rose-100 flex items-center justify-center text-base shrink-0">
-                      ⚠️
-                    </div>
-                    <h3 className="text-base font-bold text-slate-900">Offboard & Remove Team Member</h3>
-                  </div>
+                  <h3 className="text-base font-bold text-slate-900">Delete User</h3>
                   <button onClick={() => setIsDeleteUserModalOpen(false)} className="text-slate-400 hover:text-slate-600 text-lg font-bold">
                     &times;
                   </button>
                 </div>
 
-                <div className="bg-rose-50 border border-rose-200 rounded-lg p-3.5 text-xs text-rose-800 space-y-1">
-                  <p className="font-bold">You are about to permanently remove this user account:</p>
-                  <p className="text-slate-700">
-                    <strong>{userToDelete.name}</strong> ({userToDelete.email || userToDelete.role})
+                <div className="text-xs text-slate-600 space-y-2">
+                  <p>
+                    Are you sure you want to remove <strong className="text-slate-900">{userToDelete.name}</strong> ({userToDelete.email || userToDelete.role})?
                   </p>
-                  <p className="text-slate-600 text-[11px]">
-                    This will delete their login credentials from Supabase Auth and revoke all platform access.
+                  <p className="text-slate-500">
+                    Their user account and login credentials will be deleted.
                   </p>
                 </div>
 
                 {/* Lead Reassignment Selector */}
-                <div className="space-y-2 pt-2">
-                  <label className="block text-xs font-bold text-slate-800">
-                    Transfer Open Leads & Tasks ({userToDelete.leadsCount || 0} Deals)
+                <div className="space-y-1.5 pt-2">
+                  <label className="block text-xs font-semibold text-slate-800">
+                    Reassign Open Leads & Tasks To
                   </label>
-                  <p className="text-[11px] text-slate-500">
-                    Select a team member to inherit all active leads, upcoming appointments, and follow-up tasks currently assigned to {userToDelete.name}.
-                  </p>
                   <select
                     value={deleteReassignId}
                     onChange={(e) => setDeleteReassignId(e.target.value)}
-                    className="w-full border border-slate-300 rounded-lg p-2.5 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none font-medium bg-slate-50"
+                    className="w-full border border-slate-300 rounded-lg p-2 text-xs text-slate-900 focus:border-blue-600 focus:ring-1 focus:ring-blue-600 outline-none"
                   >
-                    <option value="">-- Do Not Reassign (Leave unassigned) --</option>
+                    <option value="">-- Leave unassigned --</option>
                     {users
                       .filter(u => u.id !== userToDelete.id)
                       .map(u => (
                         <option key={u.id} value={u.id}>
-                          {u.name} ({u.role}) — {u.email}
+                          {u.name} ({u.role})
                         </option>
                       ))}
                   </select>
@@ -5326,7 +5190,7 @@ export default function App() {
                       className="mt-0.5 rounded text-rose-600 focus:ring-rose-500"
                     />
                     <span>
-                      I confirm that I want to permanently delete this user account and execute the pipeline transfer.
+                      I confirm that I want to delete this user.
                     </span>
                   </label>
                 </div>
@@ -5343,9 +5207,9 @@ export default function App() {
                     type="button"
                     disabled={!deleteConfirmChecked || isDeletingUser}
                     onClick={handleConfirmDeleteUser}
-                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-lg disabled:opacity-50 transition-colors shadow-sm flex items-center gap-1.5"
+                    className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-semibold text-xs rounded-lg disabled:opacity-50 transition-colors shadow-xs"
                   >
-                    {isDeletingUser ? 'Deleting & Reassigning...' : '🗑️ Confirm Offboarding & Delete'}
+                    {isDeletingUser ? 'Deleting...' : 'Delete User'}
                   </button>
                 </div>
               </div>
