@@ -54,13 +54,11 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Default calendar to start at the current date (today) through the next 90 days
+  // Fully scrollable calendar year (Jan 1 to Dec 31 of current year)
   const getCalendarDays = () => {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-
-    const end = new Date(start);
-    end.setDate(end.getDate() + 90); // 90 days forward from today
+    const currentYear = new Date().getFullYear();
+    const start = new Date(currentYear, 0, 1); // Jan 1
+    const end = new Date(currentYear, 11, 31); // Dec 31
 
     const dates: Date[] = [];
     const curr = new Date(start);
@@ -73,12 +71,23 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
 
   const calendarDays = getCalendarDays();
 
-  // Scroll to top on mount to ensure today is immediately visible
+  // Auto-scroll directly to today on mount and view mode switch
   useEffect(() => {
-    if (containerRef.current) {
-      containerRef.current.scrollTop = 0;
-    }
+    const timer = setTimeout(() => {
+      const todayEl = document.getElementById('calendar-today');
+      if (todayEl) {
+        todayEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    }, 150);
+    return () => clearTimeout(timer);
   }, [calendarViewMode]);
+
+  const handleJumpToToday = () => {
+    const todayEl = document.getElementById('calendar-today');
+    if (todayEl) {
+      todayEl.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+  };
 
   return (
     <div className="h-full flex flex-col animate-fadeIn overflow-hidden">
@@ -93,39 +102,51 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
             </div>
             <p className="text-xs text-slate-500">
               {calendarViewMode === 'demand'
-                ? 'Color-shaded calendar showing inquiry volume. Hover over days to see requested leads and potential revenue metrics.'
-                : 'Scheduled client tours, phone calls, and virtual meetings. Hover over days to view and edit appointment logs.'}
+                ? 'Fully scrollable annual calendar showing inquiry volume. Hover over days to see requested leads and potential revenue metrics.'
+                : 'Annual scheduled client tours, phone calls, and virtual meetings. Hover over days to view and edit appointment logs.'}
             </p>
           </div>
 
-          {/* View Toggle */}
-          <div className="flex bg-white p-1 rounded-lg border border-slate-200 text-xs shrink-0">
+          {/* Quick Jump to Today & View Toggle */}
+          <div className="flex items-center gap-2.5">
             <button
-              onClick={() => setCalendarViewMode('demand')}
-              className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
-                calendarViewMode === 'demand' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-800'
-              }`}
+              onClick={handleJumpToToday}
+              type="button"
+              className="px-3 py-1.5 rounded-lg border border-blue-200 bg-blue-50 hover:bg-blue-100 text-blue-700 font-bold text-xs shadow-2xs transition-all cursor-pointer active:scale-95 flex items-center gap-1.5"
+              title="Jump to current date"
             >
-              Demand Heatmap
+              <span className="w-2 h-2 rounded-full bg-blue-600 animate-pulse"></span>
+              <span>Today</span>
             </button>
-            <button
-              onClick={() => setCalendarViewMode('appointments')}
-              className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
-                calendarViewMode === 'appointments' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-800'
-              }`}
-            >
-              Appointments
-            </button>
+
+            <div className="flex bg-white p-1 rounded-lg border border-slate-200 text-xs shrink-0">
+              <button
+                onClick={() => setCalendarViewMode('demand')}
+                className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
+                  calendarViewMode === 'demand' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Demand Heatmap
+              </button>
+              <button
+                onClick={() => setCalendarViewMode('appointments')}
+                className={`px-3 py-1.5 rounded-md font-medium transition-all cursor-pointer ${
+                  calendarViewMode === 'appointments' ? 'bg-blue-600 text-white shadow' : 'text-slate-500 hover:text-slate-800'
+                }`}
+              >
+                Appointments
+              </button>
+            </div>
           </div>
         </div>
 
-        {/* Calendar Grid (Defaults to Current Date) */}
+        {/* Calendar Grid (Full Year Scrollable) */}
         {calendarDays.length === 0 ? (
           <div className="py-8 text-center text-slate-500 text-xs">
             Please select a valid date range to view calendar data.
           </div>
         ) : (
-          <div ref={containerRef} className="flex-1 overflow-y-auto pr-2 scrollbar-thin">
+          <div ref={containerRef} className="flex-1 overflow-y-auto pr-2 scrollbar-thin scroll-smooth">
             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
               {calendarDays.map((targetDate, idx) => {
                 const y = targetDate.getFullYear();
@@ -151,7 +172,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   return (
                     <div
                       key={idx}
-                      id={isToday ? 'heatmap-today' : undefined}
+                      id={isToday ? 'calendar-today' : undefined}
                       onClick={() => {
                         if (dayData && dayData.leads && dayData.leads.length > 0) {
                           if (dayData.leads.length === 1) {
@@ -298,7 +319,7 @@ export const CalendarView: React.FC<CalendarViewProps> = ({
                   return (
                     <div
                       key={idx}
-                      id={isToday ? 'heatmap-today' : undefined}
+                      id={isToday ? 'calendar-today' : undefined}
                       onClick={() => {
                         if (dateStr >= todayStr) {
                           setQuickBookDate(dateStr);
