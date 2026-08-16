@@ -60,7 +60,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
           <div className="bg-blue-600 rounded-lg p-2">
             <BarChart3 className="h-6 w-6 text-white" />
           </div>
-          <h1 className="text-3xl font-black text-slate-800 tracking-tight">Leadflow</h1>
+          <h1 className="text-3xl font-black text-slate-800 tracking-tight">LeadFlow</h1>
         </div>
         <h2 className="text-xl font-bold text-slate-700 mt-4">Pipeline & Analytics Report</h2>
         <p className="text-slate-500 font-medium mt-1">Generated on {new Date().toLocaleDateString()}</p>
@@ -131,22 +131,6 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
             </p>
           )}
         </div>
-      </div>
-
-      {/* Reporting Header & CSV Export */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 bg-white border border-slate-200 rounded-xl p-6 print:hidden">
-        <div>
-          <h3 className="font-bold text-slate-800 text-base">Pipeline Analytics & Reports</h3>
-          <p className="text-xs text-slate-500 mt-1">Export lead records and inspect performance metrics.</p>
-        </div>
-
-        <button
-          onClick={handleDownloadCSV}
-          className="flex items-center gap-2 bg-[#1E2030] hover:bg-[#272B40] text-[#E2E8F0] font-semibold text-xs px-4 py-2.5 rounded-lg border border-[#253149] transition-all active:scale-95 shadow-sm cursor-pointer shrink-0 print:hidden"
-        >
-          <Download className="h-4 w-4 text-sky-400" />
-          <span>Download Analytics Report</span>
-        </button>
       </div>
 
       {/* Analytics Grid */}

@@ -63,7 +63,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             <div className="p-2 bg-blue-600 rounded-lg shadow-sm">
               <TrendingUp className="h-5 w-5 text-white" />
             </div>
-            <span className="font-bold text-xl text-slate-800 tracking-tight">Leadflow</span>
+            <span className="font-bold text-xl text-slate-800 tracking-tight">LeadFlow</span>
           </div>
         </div>
 
@@ -287,7 +287,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
           </h2>
           <p className="text-lg text-slate-600 mb-10 leading-relaxed font-medium">
             Manage your pipeline, automate follow-ups, and convert prospects into loyal customers with our AI-driven
-            sales platform.
+            leads platform.
           </p>
 
           {/* Visual element representing a report or UI */}

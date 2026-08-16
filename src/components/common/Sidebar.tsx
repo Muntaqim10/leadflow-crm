@@ -37,9 +37,9 @@ export const Sidebar: React.FC<SidebarProps> = ({
             <TrendingUp className="h-6 w-6 text-white" />
           </div>
           <div>
-            <h1 className="font-extrabold text-base text-white tracking-wide leading-none">Leadflow</h1>
+            <h1 className="font-extrabold text-base text-white tracking-wide leading-none">LeadFlow</h1>
             <span className="text-[10px] text-blue-200/80 font-bold uppercase tracking-widest block mt-1.5">
-              Sales Platform
+              Leads Platform
             </span>
           </div>
         </div>

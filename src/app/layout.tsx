@@ -13,8 +13,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Leadflow - Intelligent Sales Platform",
-  description: "A powerful sales platform for tracking leads, automating follow-ups, and gaining demand insights.",
+  title: "LeadFlow - Intelligent Leads Platform",
+  description: "A powerful leads platform for tracking inquiries, automating follow-ups, and gaining demand insights.",
   icons: {
     icon: "/icon.svg",
     apple: "/icon.svg",
