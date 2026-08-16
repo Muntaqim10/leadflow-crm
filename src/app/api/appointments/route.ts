@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/db';
 
@@ -20,7 +22,7 @@ export async function GET(request: Request) {
     
     return NextResponse.json({ appointments: data });
   } catch (error: any) {
-    console.error('Failed to fetch appointments:', error);
+    console.error('Failed to fetch appointments:', error.stack || error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

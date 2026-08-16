@@ -234,14 +234,12 @@ export async function GET(request: Request) {
     filteredLeads.forEach((lead) => {
       const status = lead.status;
       if (status in stageVelocity && lead.created_at) {
-        // For stage velocity, created_at makes sense, but for "stagnant", we should use updated_at
-        const created = new Date(lead.created_at).getTime();
         const lastActive = new Date(lead.updated_at || lead.created_at).getTime();
         
-        const diffDaysCreated = Math.max(0, (now - created) / (1000 * 60 * 60 * 24));
+        // Days since the lead was last updated (assumed to be when it entered the current stage)
         const diffDaysActive = Math.max(0, (now - lastActive) / (1000 * 60 * 60 * 24));
         
-        stageVelocity[status].totalDays += diffDaysCreated;
+        stageVelocity[status].totalDays += diffDaysActive;
         stageVelocity[status].count += 1;
 
         if ((status === 'proposal_sent' || status === 'negotiation') && diffDaysActive > 10) {

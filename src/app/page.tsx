@@ -347,6 +347,8 @@ export default function App() {
   const [authMode, setAuthMode] = useState<'signin' | 'signup'>('signin');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
+  const [authName, setAuthName] = useState('');
+  const [authRole, setAuthRole] = useState('Sales Manager');
   const [showPassword, setShowPassword] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState('1');
   const [authError, setAuthError] = useState('');
@@ -412,12 +414,14 @@ export default function App() {
   const templates: Template[] = Array.isArray(templatesData) ? templatesData : [];
   const liveAppointments: any[] = appData?.appointments || [];
 
-  const [users, setUsers] = useState<User[]>([
-    { id: '1', name: 'Arzaan Shaikh', role: 'General Manager' },
-    { id: '2', name: 'Rokeya Ahmed', role: 'Director of Sales' },
-    { id: '3', name: 'Riham Mohammed Jehangir', role: 'Sales Manager' },
-    { id: '4', name: 'Muntaqim Elahi', role: 'Front Desk Supervisor' }
-  ]);
+  const { data: usersData } = useSWR(session ? '/api/users' : null, fetcher, { fallbackData: [] });
+
+  const users: User[] = Array.isArray(usersData) && usersData.length > 0 ? usersData : [
+    { id: '1', name: 'Arzaan Shaikh', role: 'General Manager', email: 'arzaan@leadflow.com' },
+    { id: '2', name: 'Rokeya Ahmed', role: 'Director of Sales', email: 'rokeya@leadflow.com' },
+    { id: '3', name: 'Riham Mohammed Jehangir', role: 'Sales Manager', email: 'riham@leadflow.com' },
+    { id: '4', name: 'Muntaqim Elahi', role: 'Front Desk Supervisor', email: 'muntaqim@leadflow.com' }
+  ];
   const [analytics, setAnalytics] = useState<Analytics | null>(null);
   const [aiInsights, setAiInsights] = useState<string | null>(null);
   const [isGeneratingInsights, setIsGeneratingInsights] = useState(false);
@@ -907,6 +911,33 @@ export default function App() {
       setSuccessMsg('Signed in successfully!');
     } catch (err: any) {
       setAuthError(err.message || 'Failed to sign in. Please verify your credentials.');
+    } finally {
+      setAuthSubmitting(false);
+    }
+  };
+
+  const handleSignUp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setAuthError('');
+    setAuthSubmitting(true);
+    try {
+      const res = await fetch('/api/auth/signup', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: authEmail, password: authPassword, name: authName, role: authRole })
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to sign up');
+      }
+
+      setSuccessMsg('Account created successfully! You are now signed in.');
+      setSession(data.session);
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('leadflow_demo_session', JSON.stringify(data.session));
+      }
+    } catch (err: any) {
+      setAuthError(err.message || 'Failed to sign up. Please try again.');
     } finally {
       setAuthSubmitting(false);
     }
@@ -1716,13 +1747,9 @@ export default function App() {
 
   const loggedInUserId = useMemo(() => {
     if (!session?.user?.email) return null;
-    const email = session.user.email;
-    if (email === 'arzaan@leadflow.com') return '1';
-    if (email === 'rokeya@leadflow.com') return '2';
-    if (email === 'riham@leadflow.com') return '3';
-    if (email === 'muntaqim@leadflow.com') return '4';
-    return null;
-  }, [session]);
+    const user = users.find(u => u.email === session.user?.email);
+    return user ? user.id : null;
+  }, [session, users]);
 
   const filteredTeamTasks = useMemo(() => {
     let filtered = leadTasks;
@@ -1806,10 +1833,10 @@ export default function App() {
           </div>
 
           <div className="w-full max-w-md mx-auto my-auto">
-            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">Welcome</h2>
-            <p className="text-slate-500 text-sm mb-8">Sign in to your sales workspace to continue.</p>
+            <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">{authMode === 'signin' ? 'Welcome Back' : 'Create Account'}</h2>
+            <p className="text-slate-500 text-sm mb-8">{authMode === 'signin' ? 'Sign in to your sales workspace to continue.' : 'Register a new account to join the workspace.'}</p>
 
-            <form onSubmit={handleSignIn} className="space-y-5">
+            <form onSubmit={authMode === 'signin' ? handleSignIn : handleSignUp} className="space-y-5">
               {authError && (
                 <div className="bg-rose-50 border border-rose-200 text-rose-700 text-xs px-4 py-3 rounded-lg flex items-center gap-2">
                   <AlertTriangle className="h-4 w-4 shrink-0" />
@@ -1823,15 +1850,44 @@ export default function App() {
                 </div>
               )}
 
+              {authMode === 'signup' && (
+                <>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Full Name</label>
+                    <input
+                      type="text"
+                      required
+                      value={authName}
+                      onChange={(e) => setAuthName(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-slate-400"
+                      placeholder="e.g. Arzaan Shaikh"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Role</label>
+                    <select
+                      value={authRole}
+                      onChange={(e) => setAuthRole(e.target.value)}
+                      className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all"
+                    >
+                      <option value="General Manager">General Manager</option>
+                      <option value="Director of Sales">Director of Sales</option>
+                      <option value="Sales Manager">Sales Manager</option>
+                      <option value="Front Desk Supervisor">Front Desk Supervisor</option>
+                    </select>
+                  </div>
+                </>
+              )}
+
               <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email or Username</label>
+                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email Address</label>
                 <input
-                  type="text"
+                  type="email"
                   required
                   value={authEmail}
                   onChange={(e) => setAuthEmail(e.target.value)}
                   className="w-full bg-white border border-slate-300 rounded-lg px-4 py-2.5 text-sm text-slate-800 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all placeholder-slate-400"
-                  placeholder="e.g. Arzaan Shaikh"
+                  placeholder="name@company.com"
                 />
               </div>
 
@@ -1872,9 +1928,26 @@ export default function App() {
                 {authSubmitting ? (
                   <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
                 ) : (
-                  <span>Log in</span>
+                  <span>{authMode === 'signin' ? 'Log in' : 'Create Account'}</span>
                 )}
               </button>
+              
+              <div className="text-center mt-6">
+                <p className="text-sm text-slate-500">
+                  {authMode === 'signin' ? "Don't have an account? " : "Already have an account? "}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode(authMode === 'signin' ? 'signup' : 'signin');
+                      setAuthError('');
+                      setSuccessMsg('');
+                    }}
+                    className="text-blue-600 font-semibold hover:text-blue-800 transition-colors"
+                  >
+                    {authMode === 'signin' ? 'Sign up' : 'Log in'}
+                  </button>
+                </p>
+              </div>
             </form>
           </div>
 
@@ -4397,6 +4470,7 @@ export default function App() {
                         <thead className="bg-slate-50 border-b border-slate-200">
                           <tr>
                             <th className="p-3 font-semibold text-slate-700">Name</th>
+                            <th className="p-3 font-semibold text-slate-700">Email</th>
                             <th className="p-3 font-semibold text-slate-700">Role</th>
                             <th className="p-3 font-semibold text-slate-700 text-right">Actions</th>
                           </tr>
@@ -4405,6 +4479,7 @@ export default function App() {
                           {users.map(u => (
                             <tr key={u.id} className="hover:bg-slate-50">
                               <td className="p-3 font-medium text-slate-900">{u.name}</td>
+                              <td className="p-3 text-slate-600">{u.email}</td>
                               <td className="p-3 text-slate-600">{u.role}</td>
                               <td className="p-3 text-right">
                                 <button onClick={() => handleEditUser(u)} className="text-blue-600 hover:text-blue-800 font-medium">Edit</button>

@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
     let senderName = 'Sales Team';
     try {
-      const supabase = await getSupabaseClient();
+      const supabase = await getSupabaseClient(false);
       if (supabase) {
         const { data: { user } } = await supabase.auth.getUser();
         if (user?.user_metadata?.name) {

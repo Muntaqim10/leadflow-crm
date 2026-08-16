@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { initDatabase, seedMockData } from '@/lib/db';
+import { initDatabase, seedDefaultTemplates, seedTestTeam } from '@/lib/db';
 
 export async function POST(request: Request) {
   try {
@@ -9,7 +9,8 @@ export async function POST(request: Request) {
     let seeded = false;
 
     if (seed) {
-      await seedMockData();
+      await seedDefaultTemplates();
+      await seedTestTeam();
       seeded = true;
     }
 
