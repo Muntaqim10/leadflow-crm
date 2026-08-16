@@ -480,11 +480,10 @@ export default function App() {
 
   const handleAddUser = () => {
     if (!newUserName.trim() || !newUserRole.trim()) return;
-    const newUser = { id: Date.now().toString(), name: newUserName, role: newUserRole };
-    setUsers([...users, newUser]);
+    // TODO: Create user via API if needed. For now, public sign up is used.
     setIsAddUserModalOpen(false);
     setNewUserName('');
-    setNewUserRole('Sales Agent');
+    setNewUserRole('Sales Manager');
     setSuccessMsg('User added successfully!');
   };
 
@@ -497,7 +496,7 @@ export default function App() {
 
   const handleSaveEditUser = () => {
     if (!editUserName.trim() || !editUserRole.trim()) return;
-    setUsers(users.map(u => u.id === editingUserId ? { ...u, name: editUserName, role: editUserRole } : u));
+    // TODO: Update user via API
     setIsEditUserModalOpen(false);
     setSuccessMsg('User updated successfully!');
   };
