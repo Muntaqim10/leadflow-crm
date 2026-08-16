@@ -64,7 +64,7 @@ const defaultTemplates: RowData[] = [
   { id: 'tpl-4', template_type: 'booking_confirmation', content: 'Dear {{client_name}},\n\nWe are thrilled to officially confirm your booking at Leadflow for {{check_in_date}} to {{check_out_date}}!\n\nAttached is your official confirmation. We can\'t wait to deliver an unforgettable experience for you and your guests.\n\nBest,\n{{user_name}}' },
   { id: 'tpl-5', template_type: 'feedback_request', content: 'Dear {{client_name}},\n\nThank you for considering Leadflow. We are always striving to improve our guest experience, and we would deeply appreciate any feedback on how we can better serve your event needs in the future.\n\nThank you for your time,\n{{user_name}}' }
 ];
-async function withTimeout<T = any>(promise: PromiseLike<T>, ms: number = 5000): Promise<T> {
+async function withTimeout<T = any>(promise: PromiseLike<T>, ms: number = 8000): Promise<T> {
   let timer: NodeJS.Timeout;
   const timeoutPromise = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error('Supabase request timeout')), ms);
@@ -81,7 +81,7 @@ async function withTimeout<T = any>(promise: PromiseLike<T>, ms: number = 5000):
 
 export async function getRows(tableName: string): Promise<RowData[]> {
   const supabase = await getSupabaseClient();
-  const { data, error } = await withTimeout(supabase.from(tableName).select('*'), 1000);
+  const { data, error } = await withTimeout(supabase.from(tableName).select('*'), 8000);
   if (error) throw error;
   return data || [];
 }
@@ -98,7 +98,7 @@ export async function addRow(
   const supabase = await getSupabaseClient();
   const { data: insertedData, error } = await withTimeout(
     supabase.from(tableName).insert(payload).select().single(), 
-    1000
+    8000
   );
   if (error) throw error;
   return insertedData;
@@ -115,7 +115,7 @@ export async function updateRow(
   const supabase = await getSupabaseClient();
   const { data: updatedData, error } = await withTimeout(
     supabase.from(tableName).update(payload).eq('id', id).select().single(),
-    1000
+    8000
   );
   if (error) throw error;
   return updatedData;
@@ -125,14 +125,14 @@ export async function deleteRow(tableName: string, id: string): Promise<void> {
   const supabase = await getSupabaseClient();
   const { error } = await withTimeout(
     supabase.from(tableName).delete().eq('id', id),
-    1000
+    8000
   );
   if (error) throw error;
 }
 
 export async function initDatabase(): Promise<string[]> {
   const supabase = await getSupabaseClient();
-  await withTimeout(supabase.from('users').select('id').limit(1), 1000);
+  await withTimeout(supabase.from('users').select('id').limit(1), 8000);
   return [];
 }
 

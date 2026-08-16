@@ -23,7 +23,12 @@ export async function GET() {
         const dbU = dbUsers.find(d => d.id === authU.id || d.email?.toLowerCase() === authU.email?.toLowerCase());
         const role = dbU?.role || authU.user_metadata?.role || 'Sales Agent';
         const name = dbU?.name || authU.user_metadata?.name || authU.user_metadata?.full_name || authU.email?.split('@')[0] || 'User';
-        const userLeads = leads.filter(l => l.user_id === authU.id || l.manager_id === authU.id || (dbU && (l.user_id === dbU.id || l.manager_id === dbU.id)));
+        const userLeads = leads.filter(l => 
+          l.assigned_sales_manager_id === authU.id || 
+          l.user_id === authU.id || 
+          l.manager_id === authU.id || 
+          (dbU && (l.assigned_sales_manager_id === dbU.id || l.user_id === dbU.id || l.manager_id === dbU.id))
+        );
         return {
           id: authU.id,
           email: authU.email || '',
@@ -44,7 +49,11 @@ export async function GET() {
     const filteredDbUsers = dbUsers
       .filter(u => u.email && u.email.includes('@') && !u.email.endsWith('@leadflow.com'))
       .map(u => {
-        const userLeads = leads.filter(l => l.user_id === u.id || l.manager_id === u.id);
+        const userLeads = leads.filter(l => 
+          l.assigned_sales_manager_id === u.id || 
+          l.user_id === u.id || 
+          l.manager_id === u.id
+        );
         return {
           id: u.id,
           email: u.email,
@@ -135,10 +144,9 @@ export async function DELETE(request: Request) {
     // 1. Reassign leads/appointments/tasks if requested
     if (reassignTo && reassignTo !== id) {
       try {
-        await supabase.from('leads').update({ user_id: reassignTo }).eq('user_id', id);
-        await supabase.from('leads').update({ manager_id: reassignTo }).eq('manager_id', id);
-        await supabase.from('appointments').update({ host_agent_id: reassignTo }).eq('host_agent_id', id);
-        await supabase.from('lead_tasks').update({ assigned_to: reassignTo }).eq('assigned_to', id);
+        await supabase.from('leads').update({ assigned_sales_manager_id: reassignTo }).eq('assigned_sales_manager_id', id);
+        await supabase.from('appointments').update({ agent_id: reassignTo }).eq('agent_id', id);
+        await supabase.from('tasks').update({ assigned_to: reassignTo }).eq('assigned_to', id);
       } catch (reassignErr) {
         console.warn('Failed to reassign user records:', reassignErr);
       }

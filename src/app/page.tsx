@@ -4053,7 +4053,7 @@ export default function App() {
           </button>
           <button onClick={() => setActiveTab('heatmap')} className={`flex flex-col items-center p-2 rounded-lg ${activeTab === 'heatmap' ? 'text-blue-600' : 'text-slate-500'}`}>
             <Calendar className="h-5 w-5 mb-1" />
-            <span className="text-[10px] font-medium">Heatmap</span>
+            <span className="text-[10px] font-medium">Calendar</span>
           </button>
         </div>
       </main>
