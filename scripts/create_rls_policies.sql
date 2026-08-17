@@ -44,81 +44,101 @@ $$ LANGUAGE plpgsql SECURITY DEFINER;
 -- LEADS POLICIES
 ALTER TABLE leads ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Enable read access for leads" ON leads;
 CREATE POLICY "Enable read access for leads" ON leads FOR SELECT TO authenticated
 USING (auth.uid()::text = assigned_sales_manager_id OR is_admin());
 
+DROP POLICY IF EXISTS "Enable insert for leads" ON leads;
 CREATE POLICY "Enable insert for leads" ON leads FOR INSERT TO authenticated
 WITH CHECK (true); -- Anyone logged in can create a lead, but assigned_sales_manager_id is typically set
 
+DROP POLICY IF EXISTS "Enable update for leads" ON leads;
 CREATE POLICY "Enable update for leads" ON leads FOR UPDATE TO authenticated
 USING (auth.uid()::text = assigned_sales_manager_id OR is_admin());
 
+DROP POLICY IF EXISTS "Enable delete for leads" ON leads;
 CREATE POLICY "Enable delete for leads" ON leads FOR DELETE TO authenticated
 USING (auth.uid()::text = assigned_sales_manager_id OR is_admin());
 
 -- TASKS POLICIES
 ALTER TABLE tasks ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Enable read access for tasks" ON tasks;
 CREATE POLICY "Enable read access for tasks" ON tasks FOR SELECT TO authenticated
 USING (auth.uid()::text = assigned_to OR is_admin());
 
+DROP POLICY IF EXISTS "Enable insert for tasks" ON tasks;
 CREATE POLICY "Enable insert for tasks" ON tasks FOR INSERT TO authenticated
 WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Enable update for tasks" ON tasks;
 CREATE POLICY "Enable update for tasks" ON tasks FOR UPDATE TO authenticated
 USING (auth.uid()::text = assigned_to OR is_admin());
 
+DROP POLICY IF EXISTS "Enable delete for tasks" ON tasks;
 CREATE POLICY "Enable delete for tasks" ON tasks FOR DELETE TO authenticated
 USING (auth.uid()::text = assigned_to OR is_admin());
 
 -- EMAIL TEMPLATES POLICIES (Read-only for all authenticated, write for admins)
 ALTER TABLE email_templates ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Enable read access for email_templates" ON email_templates;
 CREATE POLICY "Enable read access for email_templates" ON email_templates FOR SELECT TO authenticated
 USING (true);
 
+DROP POLICY IF EXISTS "Enable insert for email_templates" ON email_templates;
 CREATE POLICY "Enable insert for email_templates" ON email_templates FOR INSERT TO authenticated
 WITH CHECK (is_admin());
 
+DROP POLICY IF EXISTS "Enable update for email_templates" ON email_templates;
 CREATE POLICY "Enable update for email_templates" ON email_templates FOR UPDATE TO authenticated
 USING (is_admin());
 
+DROP POLICY IF EXISTS "Enable delete for email_templates" ON email_templates;
 CREATE POLICY "Enable delete for email_templates" ON email_templates FOR DELETE TO authenticated
 USING (is_admin());
 
 -- APPOINTMENTS POLICIES
 ALTER TABLE appointments ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Enable read access for appointments" ON appointments;
 CREATE POLICY "Enable read access for appointments" ON appointments FOR SELECT TO authenticated
 USING (auth.uid()::text = agent_id OR is_admin());
 
+DROP POLICY IF EXISTS "Enable insert for appointments" ON appointments;
 CREATE POLICY "Enable insert for appointments" ON appointments FOR INSERT TO authenticated
 WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Enable update for appointments" ON appointments;
 CREATE POLICY "Enable update for appointments" ON appointments FOR UPDATE TO authenticated
 USING (auth.uid()::text = agent_id OR is_admin());
 
+DROP POLICY IF EXISTS "Enable delete for appointments" ON appointments;
 CREATE POLICY "Enable delete for appointments" ON appointments FOR DELETE TO authenticated
 USING (auth.uid()::text = agent_id OR is_admin());
 
 -- LEAD ACTIVITIES POLICIES
 ALTER TABLE lead_activities ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Enable read access for lead_activities" ON lead_activities;
 CREATE POLICY "Enable read access for lead_activities" ON lead_activities FOR SELECT TO authenticated
 USING (
   lead_id IN (SELECT id FROM leads WHERE assigned_sales_manager_id = auth.uid()::text) 
   OR is_admin()
 );
 
+DROP POLICY IF EXISTS "Enable insert for lead_activities" ON lead_activities;
 CREATE POLICY "Enable insert for lead_activities" ON lead_activities FOR INSERT TO authenticated
 WITH CHECK (true);
 
+DROP POLICY IF EXISTS "Enable update for lead_activities" ON lead_activities;
 CREATE POLICY "Enable update for lead_activities" ON lead_activities FOR UPDATE TO authenticated
 USING (
   lead_id IN (SELECT id FROM leads WHERE assigned_sales_manager_id = auth.uid()::text) 
   OR is_admin()
 );
 
+DROP POLICY IF EXISTS "Enable delete for lead_activities" ON lead_activities;
 CREATE POLICY "Enable delete for lead_activities" ON lead_activities FOR DELETE TO authenticated
 USING (
   lead_id IN (SELECT id FROM leads WHERE assigned_sales_manager_id = auth.uid()::text) 
