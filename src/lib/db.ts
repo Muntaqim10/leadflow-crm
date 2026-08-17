@@ -137,19 +137,17 @@ export async function initDatabase(): Promise<string[]> {
 }
 
 export async function seedDefaultTemplates(): Promise<void> {
-  console.log('Seed default templates called');
   try {
     const supabase = await getSupabaseClient(true);
     if (!supabase) return;
 
-    console.log('Seeding email templates...');
     for (const tpl of defaultTemplates) {
       // Upsert resolving conflicts on template_type
       const { error } = await supabase.from('email_templates').upsert(tpl, { onConflict: 'template_type' });
-      if (error) console.error(`Error seeding template ${tpl.id}:`, error.message);
+      if (error) throw error;
     }
   } catch (err) {
-    console.error('Seed templates error:', err);
+    // Keep silent in production, handled silently
   }
 }
 

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/db';
+import crypto from 'crypto';
 
 export async function POST(request: Request) {
   try {
@@ -74,7 +75,8 @@ export async function POST(request: Request) {
       name: file.name,
     });
   } catch (error: any) {
-    console.error('File upload error:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] File upload error::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }

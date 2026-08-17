@@ -1,20 +1,41 @@
 export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 import { NextResponse } from 'next/server';
-import { getRows, addRow } from '@/lib/db';
+import { getRows, addRow, getSupabaseClient } from '@/lib/db';
+import { getCallerAuth } from '@/lib/auth';
+import crypto from 'crypto';
 
 export async function GET() {
   try {
-    const leads = await getRows('leads');
-    return NextResponse.json(leads);
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
+    const supabase = await getSupabaseClient(true);
+    let query = supabase.from('leads').select('*');
+    if (!caller.isAdmin && caller.user) {
+      query = query.eq('assigned_sales_manager_id', caller.user.id);
+    }
+    
+    const { data: leads, error } = await query;
+    if (error) throw error;
+    
+    return NextResponse.json(leads || []);
   } catch (error: any) {
-    console.error('Failed to fetch leads:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to fetch leads::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const body = await request.json();
 
     // Validate required fields
@@ -53,7 +74,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ ...newLead, lead: newLead }, { status: 201 });
   } catch (error: any) {
-    console.error('Failed to create lead:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to create lead::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }

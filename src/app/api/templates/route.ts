@@ -2,14 +2,16 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 import { NextResponse } from 'next/server';
 import { getRows, addRow, updateRow } from '@/lib/db';
+import crypto from 'crypto';
 
 export async function GET() {
   try {
     const templates = await getRows('email_templates');
     return NextResponse.json(templates);
   } catch (error: any) {
-    console.error('Failed to fetch templates:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to fetch templates::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
 
@@ -36,7 +38,8 @@ export async function POST(request: Request) {
       return NextResponse.json(created, { status: 201 });
     }
   } catch (error: any) {
-    console.error('Failed to save template:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to save template::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }

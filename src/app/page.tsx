@@ -65,13 +65,7 @@ export default function App() {
       }
     }
 
-    // Check saved local session if Supabase is offline
-    const savedLocalSession = typeof window !== 'undefined' ? localStorage.getItem('leadflow_demo_session') : null;
-    if (savedLocalSession) {
-      try {
-        setSession(JSON.parse(savedLocalSession));
-      } catch (e) {}
-    }
+
 
     // Safety timeout: max 1200ms to end auth loading state regardless of network/Supabase errors
     const timer = setTimeout(() => {
@@ -529,9 +523,7 @@ export default function App() {
 
       if (sessionData) {
         setSession(sessionData);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('leadflow_demo_session', JSON.stringify(sessionData));
-        }
+
         setSuccessMsg('Logged in successfully!');
       }
     } catch (err: any) {
@@ -561,9 +553,7 @@ export default function App() {
 
       if (data.session) {
         setSession(data.session);
-        if (typeof window !== 'undefined') {
-          localStorage.setItem('leadflow_demo_session', JSON.stringify(data.session));
-        }
+
         setSuccessMsg('Account created successfully! Welcome to Leadflow.');
       } else {
         setSuccessMsg('Registration successful! You can now log in.');
@@ -622,9 +612,7 @@ export default function App() {
     try {
       await supabase.auth.signOut();
     } catch (e) {}
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem('leadflow_demo_session');
-    }
+
     setSession(null);
     setAnalytics(null);
     setHeatmap(null);
@@ -946,6 +934,17 @@ export default function App() {
     if (!selectedLead) return;
     setIsGeneratingProposal(true);
 
+    const escapeHtml = (unsafe: string) => {
+      if (!unsafe) return '';
+      return unsafe
+        .toString()
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    };
+
     setTimeout(() => {
       const parsed = parseRoomDetails(selectedLead.rooms_or_event_details);
       const checkInDate = new Date(selectedLead.check_in_date);
@@ -962,7 +961,7 @@ export default function App() {
           totalRoomsRev += rev;
           guestRoomsHtml += `
             <tr>
-              <td style="padding: 10px; border-bottom: 1px solid #E2E8F0;">${r.type} Block</td>
+              <td style="padding: 10px; border-bottom: 1px solid #E2E8F0;">${escapeHtml(r.type)} Block</td>
               <td style="padding: 10px; border-bottom: 1px solid #E2E8F0;">${count} Rooms</td>
               <td style="padding: 10px; border-bottom: 1px solid #E2E8F0;">
                 $${rate.toFixed(2)}<br>
@@ -995,8 +994,8 @@ export default function App() {
             </thead>
             <tbody>
               <tr>
-                <td style="padding: 10px; border-bottom: 1px solid #E2E8F0; font-weight: bold;">📍 ${parsed.eventRoom}</td>
-                <td style="padding: 10px; border-bottom: 1px solid #E2E8F0;">${parsed.eventDetails || 'Meeting / Setup Details'}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #E2E8F0; font-weight: bold;">📍 ${escapeHtml(parsed.eventRoom)}</td>
+                <td style="padding: 10px; border-bottom: 1px solid #E2E8F0;">${escapeHtml(parsed.eventDetails) || 'Meeting / Setup Details'}</td>
                 <td style="padding: 10px; border-bottom: 1px solid #E2E8F0; font-weight: bold; text-align: right;">$${eventRate.toLocaleString(
                   undefined,
                   { minimumFractionDigits: 2 }
@@ -1016,7 +1015,7 @@ export default function App() {
           totalAccessories += price;
           rows += `
             <tr>
-              <td style="padding: 10px; border-bottom: 1px solid #E2E8F0;">✨ ${a.name}</td>
+              <td style="padding: 10px; border-bottom: 1px solid #E2E8F0;">✨ ${escapeHtml(a.name)}</td>
               <td style="padding: 10px; border-bottom: 1px solid #E2E8F0; font-weight: bold; text-align: right;">$${price.toLocaleString(
                 undefined,
                 { minimumFractionDigits: 2 }
@@ -1053,16 +1052,16 @@ export default function App() {
       const html = `
         <div style="font-family: 'Inter', sans-serif; color: #1E293B; line-height: 1.6; max-width: 800px; margin: auto; padding: 20px;">
           <div style="text-align: center; border-bottom: 2px solid #3B82F6; padding-bottom: 20px; margin-bottom: 30px;">
-            <h1 style="color: #1E3A8A; margin: 0; font-size: 24px;">${hotelName.toUpperCase()}</h1>
+            <h1 style="color: #1E3A8A; margin: 0; font-size: 24px;">${escapeHtml(hotelName.toUpperCase())}</h1>
             <p style="color: #64748B; margin: 5px 0 0 0; font-size: 14px;">Group Rooms & Event Agreement</p>
           </div>
 
           <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 30px; font-size: 13px;">
             <div>
               <strong style="color: #0F172A; display: block; margin-bottom: 5px;">ORGANIZATION / GROUP DETAILS:</strong>
-              <strong>Group Name:</strong> ${selectedLead.name_company}<br>
-              <strong>Contact Email:</strong> ${selectedLead.email}<br>
-              <strong>Contact Phone:</strong> ${selectedLead.phone || 'N/A'}<br>
+              <strong>Group Name:</strong> ${escapeHtml(selectedLead.name_company)}<br>
+              <strong>Contact Email:</strong> ${escapeHtml(selectedLead.email)}<br>
+              <strong>Contact Phone:</strong> ${escapeHtml(selectedLead.phone || 'N/A')}<br>
             </div>
             <div style="text-align: right;">
               <strong style="color: #0F172A; display: block; margin-bottom: 5px;">AGREEMENT DETAILS:</strong>
@@ -1170,10 +1169,10 @@ export default function App() {
                     ${(() => {
                       const fullName = session?.user?.user_metadata?.full_name;
                       const assignedUser = users.find((u: any) => u.id === selectedLead.assigned_sales_manager_id);
-                      if (fullName) return fullName;
-                      if (assignedUser) return assignedUser.name;
+                      if (fullName) return escapeHtml(fullName);
+                      if (assignedUser) return escapeHtml(assignedUser.name);
                       const emailName = session?.user?.email?.split('@')[0] || 'Sales Agent';
-                      return emailName.charAt(0).toUpperCase() + emailName.slice(1);
+                      return escapeHtml(emailName.charAt(0).toUpperCase() + emailName.slice(1));
                     })()}
                   </span>
                 </div>

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/db';
+import { getCallerAuth } from '@/lib/auth';
+import crypto from 'crypto';
 
 export async function DELETE(
   request: Request,
@@ -9,12 +11,24 @@ export async function DELETE(
     const { id } = await params;
     const supabase = await getSupabaseClient(true);
 
-    // Fetch the appointment first to know its details for the activity log
-    const { data: aptData } = await supabase
+    // Fetch the appointment first to know its details for the activity log and auth check
+    const { data: aptData, error: fetchError } = await supabase
       .from('appointments')
-      .select('lead_id, type, appointment_date')
+      .select('lead_id, type, appointment_date, agent_id')
       .eq('id', id)
       .single();
+
+    if (fetchError || !aptData) {
+      return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
+    }
+
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!caller.isAdmin && aptData.agent_id !== caller.user?.id) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to delete this appointment.' }, { status: 403 });
+    }
     
     const { error } = await supabase
       .from('appointments')
@@ -40,8 +54,9 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Failed to delete appointment:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to delete appointment::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
 
@@ -54,6 +69,24 @@ export async function PUT(
     const supabase = await getSupabaseClient(true);
     const body = await request.json();
     const { appointment_date, appointment_time, type, agent_id } = body;
+
+    const { data: aptData, error: fetchError } = await supabase
+      .from('appointments')
+      .select('agent_id')
+      .eq('id', id)
+      .single();
+
+    if (fetchError || !aptData) {
+      return NextResponse.json({ error: 'Appointment not found' }, { status: 404 });
+    }
+
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!caller.isAdmin && aptData.agent_id !== caller.user?.id) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to modify this appointment.' }, { status: 403 });
+    }
 
     const { data, error } = await supabase
       .from('appointments')
@@ -91,7 +124,8 @@ export async function PUT(
 
     return NextResponse.json({ success: true, appointment: data });
   } catch (error: any) {
-    console.error('Failed to update appointment:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to update appointment::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }

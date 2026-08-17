@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 
 export async function POST(req: Request) {
   try {
@@ -51,7 +52,8 @@ Guidelines:
 
     return NextResponse.json({ insights });
   } catch (error: any) {
-    console.error('API Error:', error);
-    return NextResponse.json({ error: error.message || 'An unexpected error occurred' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] API Error::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }

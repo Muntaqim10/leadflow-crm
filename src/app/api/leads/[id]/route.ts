@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { updateRow, deleteRow, getRows, getSupabaseClient } from '@/lib/db';
+import { getCallerAuth } from '@/lib/auth';
+import crypto from 'crypto';
 
 export async function PUT(
   request: Request,
@@ -12,6 +14,19 @@ export async function PUT(
     // 1. Fetch current lead state to detect status changes and first contact
     const leads = await getRows('leads');
     const existingLead = leads.find((l) => l.id === id);
+
+    if (!existingLead) {
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+    }
+
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!caller.isAdmin && existingLead.assigned_sales_manager_id !== caller.user?.id) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to modify this lead.' }, { status: 403 });
+    }
+
     const oldStatus = existingLead?.status;
     const oldFirstContacted = existingLead?.first_contacted_at;
     const oldDoc = existingLead?.document_url;
@@ -91,8 +106,9 @@ export async function PUT(
 
     return NextResponse.json({ ...updatedLead, lead: updatedLead });
   } catch (error: any) {
-    console.error('Failed to update lead:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to update lead::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
 
@@ -102,10 +118,26 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
+    const leads = await getRows('leads');
+    const existingLead = leads.find((l) => l.id === id);
+
+    if (!existingLead) {
+      return NextResponse.json({ error: 'Lead not found' }, { status: 404 });
+    }
+
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+    if (!caller.isAdmin && existingLead.assigned_sales_manager_id !== caller.user?.id) {
+      return NextResponse.json({ error: 'Forbidden: You do not have permission to delete this lead.' }, { status: 403 });
+    }
+
     await deleteRow('leads', id);
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Failed to delete lead:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to delete lead::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }

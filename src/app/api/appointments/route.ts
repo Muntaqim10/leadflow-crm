@@ -2,13 +2,20 @@ export const dynamic = 'force-dynamic';
 export const revalidate = 0;
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/db';
+import { getCallerAuth } from '@/lib/auth';
+import crypto from 'crypto';
 
 export async function GET(request: Request) {
   try {
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const supabase = await getSupabaseClient(true);
     
     // Fetch all appointments, joining with leads and users to get names
-    const { data, error } = await supabase
+    let query = supabase
       .from('appointments')
       .select(`
         *,
@@ -18,17 +25,29 @@ export async function GET(request: Request) {
       .order('appointment_date', { ascending: true })
       .order('appointment_time', { ascending: true });
 
+    if (!caller.isAdmin && caller.user) {
+      query = query.eq('agent_id', caller.user.id);
+    }
+
+    const { data, error } = await query;
+
     if (error) throw error;
     
     return NextResponse.json({ appointments: data });
   } catch (error: any) {
-    console.error('Failed to fetch appointments:', error.stack || error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to fetch appointments::`, error.stack || error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
 
 export async function POST(request: Request) {
   try {
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const supabase = await getSupabaseClient(true);
     const body = await request.json();
     const { lead_id, client_name, agent_id, type, appointment_date, appointment_time } = body;
@@ -93,13 +112,19 @@ export async function POST(request: Request) {
     
     return NextResponse.json({ success: true, appointment: data });
   } catch (error: any) {
-    console.error('Failed to save appointment:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to save appointment::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
 
 export async function PUT(request: Request) {
   try {
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const supabase = await getSupabaseClient(true);
     const body = await request.json();
     const { id, appointment_date, appointment_time, type, agent_id } = body;
@@ -143,8 +168,9 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ success: true, appointment: data });
   } catch (error: any) {
-    console.error('Failed to update appointment:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to update appointment::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
 
@@ -155,6 +181,11 @@ export async function DELETE(request: Request) {
 
     if (!id) {
       return NextResponse.json({ error: 'Appointment id is required' }, { status: 400 });
+    }
+
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
     const supabase = await getSupabaseClient(true);
@@ -189,8 +220,9 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Failed to delete appointment:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to delete appointment::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
 

@@ -1,13 +1,20 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/db';
+import { getCallerAuth } from '@/lib/auth';
+import crypto from 'crypto';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseClient(true);
     
     // Join with users table to get assignee names
     const { data, error } = await supabase
@@ -20,8 +27,9 @@ export async function GET(
 
     return NextResponse.json({ tasks: data || [] });
   } catch (error: any) {
-    console.error('Failed to fetch lead tasks:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to fetch lead tasks::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
 
@@ -30,8 +38,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseClient(true);
     const body = await request.json();
     const { description, assigned_to, due_date } = body;
 
@@ -58,7 +71,8 @@ export async function POST(
 
     return NextResponse.json({ success: true, task: data });
   } catch (error: any) {
-    console.error('Failed to create lead task:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to create lead task::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }

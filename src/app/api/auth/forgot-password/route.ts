@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/db';
+import crypto from 'crypto';
 
 export async function POST(request: Request) {
   try {
@@ -27,7 +28,8 @@ export async function POST(request: Request) {
       message: 'If an account exists with this email, a password reset link has been sent.'
     });
   } catch (error: any) {
-    console.error('Forgot password error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to process request' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Forgot password error::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }

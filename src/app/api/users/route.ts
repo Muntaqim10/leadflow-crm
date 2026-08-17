@@ -1,48 +1,9 @@
 import { NextResponse } from 'next/server';
 import { getRows, getSupabaseClient } from '@/lib/db';
 import { cookies } from 'next/headers';
+import crypto from 'crypto';
 
-// Helper to authenticate caller and determine admin rights
-async function getCallerAuth() {
-  let token: string | undefined;
-  try {
-    const cookieStore = await cookies();
-    token = cookieStore.get('auth_token')?.value;
-  } catch (e) {}
-
-  if (!token) {
-    return { isAuthenticated: false, isAdmin: false, user: null };
-  }
-
-  const supabase = await getSupabaseClient(true);
-  if (!supabase?.auth?.admin) {
-    return { isAuthenticated: false, isAdmin: false, user: null };
-  }
-
-  const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) {
-    return { isAuthenticated: false, isAdmin: false, user: null };
-  }
-
-  const metaTier = user.user_metadata?.permission_tier;
-  const role = (user.user_metadata?.role || '').toLowerCase();
-  const email = (user.email || '').toLowerCase();
-
-  const isSuperAdminEmail = email === 'muntaqim@leadflow.com' || email === 'muntaquime@gmail.com';
-  const isAdmin =
-    metaTier === 'admin' ||
-    role.includes('admin') ||
-    role.includes('general manager') ||
-    role.includes('supervisor') ||
-    role.includes('director') ||
-    isSuperAdminEmail;
-
-  return {
-    isAuthenticated: true,
-    isAdmin,
-    user
-  };
-}
+import { getCallerAuth } from '@/lib/auth';
 
 export async function GET() {
   try {
@@ -162,8 +123,9 @@ export async function GET() {
 
     return NextResponse.json(userList);
   } catch (error: any) {
-    console.error('Failed to fetch users:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to fetch users::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
 
@@ -227,13 +189,13 @@ export async function POST(request: Request) {
         email: email.trim(),
         name: name.trim(),
         role: userRole,
-        permission_tier: userTier,
-        temporaryPassword: userPassword
+        permission_tier: userTier
       }
     });
   } catch (error: any) {
-    console.error('Failed to create user:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to create user::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
 
@@ -289,8 +251,9 @@ export async function DELETE(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error: any) {
-    console.error('Failed to delete user:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to delete user::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
 
@@ -354,8 +317,9 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ ...data, permission_tier: permission_tier || data?.permission_tier });
   } catch (error: any) {
-    console.error('Failed to update user:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to update user::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
 

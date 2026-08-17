@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import crypto from 'crypto';
 
 export async function GET(request: Request) {
   try {
@@ -45,7 +46,8 @@ export async function GET(request: Request) {
       },
     });
   } catch (error: any) {
-    console.error('Download API error:', error);
-    return NextResponse.json({ error: error.message || 'Failed to download file' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Download API error::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/db';
+import crypto from 'crypto';
 
 export async function POST(request: Request) {
   try {
@@ -17,7 +18,7 @@ export async function POST(request: Request) {
 
       if (error) {
         console.error('Supabase login error:', error);
-        return NextResponse.json({ error: error.message || 'Invalid email or password' }, { status: 401 });
+        return NextResponse.json({ error: 'Unauthorized.' }, { status: 401 });
       }
 
       if (data?.session) {
@@ -37,7 +38,8 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ error: 'Invalid email or password. Please verify your credentials.' }, { status: 401 });
   } catch (error: any) {
-    console.error('Login error:', error);
-    return NextResponse.json({ error: error.message || 'Authentication error' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Login error::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }

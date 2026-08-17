@@ -23,12 +23,7 @@ export function useAuth(users: User[]) {
       if (window.location.hash.includes('type=recovery') || window.location.href.includes('reset=true')) {
         setAuthMode('reset_password');
       }
-      const savedLocalSession = localStorage.getItem('leadflow_auth_session');
-      if (savedLocalSession) {
-        try {
-          setSession(JSON.parse(savedLocalSession));
-        } catch (e) { }
-      }
+
     }
 
     const timer = setTimeout(() => {
@@ -97,7 +92,7 @@ export function useAuth(users: User[]) {
     } catch (e) {
       console.warn('Sign out error:', e);
     }
-    localStorage.removeItem('leadflow_auth_session');
+
     setSession(null);
     setAuthMode('signin');
   };

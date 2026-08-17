@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/db';
+import crypto from 'crypto';
 
 export async function POST(request: Request) {
   try {
@@ -122,7 +123,8 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error: any) {
-    console.error('Signup exception:', error);
-    return NextResponse.json({ error: error.message || 'Authentication error' }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Signup exception::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }

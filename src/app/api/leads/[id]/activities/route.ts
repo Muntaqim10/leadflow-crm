@@ -1,13 +1,20 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/db';
+import { getCallerAuth } from '@/lib/auth';
+import crypto from 'crypto';
 
 export async function GET(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseClient(true);
     
     const { data, error } = await supabase
       .from('lead_activities')
@@ -19,8 +26,9 @@ export async function GET(
 
     return NextResponse.json({ activities: data || [] });
   } catch (error: any) {
-    console.error('Failed to fetch lead activities:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to fetch lead activities::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
 
@@ -29,8 +37,13 @@ export async function POST(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const caller = await getCallerAuth();
+    if (!caller.isAuthenticated) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     const { id } = await params;
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseClient(true);
     const body = await request.json();
     const { description, performed_by, activity_type } = body;
 
@@ -56,7 +69,8 @@ export async function POST(
 
     return NextResponse.json({ success: true, activity: data });
   } catch (error: any) {
-    console.error('Failed to save lead activity:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    const correlationId = crypto.randomUUID();
+    console.error(`[Error ${correlationId}] Failed to save lead activity::`, error);
+    return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
