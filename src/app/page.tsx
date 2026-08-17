@@ -867,11 +867,10 @@ export default function App() {
     setApptSaving(true);
 
     try {
-      const res = await fetch('/api/appointments', {
+      const res = await fetch(`/api/appointments/${activeAppointment.id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          id: activeAppointment.id,
           appointment_date: editApptDate,
           appointment_time: editApptTime,
           type: editApptType,
@@ -896,7 +895,7 @@ export default function App() {
   const handleDeleteAppointment = async (id: string) => {
     if (!confirm('Are you sure you want to cancel this meeting?')) return;
     try {
-      const res = await fetch(`/api/appointments?id=${id}`, { method: 'DELETE' });
+      const res = await fetch(`/api/appointments/${id}`, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to cancel appointment');
       setSuccessMsg('Appointment cancelled.');
       setActiveAppointment(null);
