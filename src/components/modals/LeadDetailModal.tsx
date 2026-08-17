@@ -9,7 +9,7 @@ import {
   Plus
 } from 'lucide-react';
 import { Lead, User } from '@/types/crm';
-import { calculateLeadScore, getLeadBookingType } from '@/lib/calculations';
+import { calculateLeadScore, getLeadBookingType, formatStayRange, formatCreatedDateDisplay } from '@/lib/calculations';
 
 interface LeadDetailModalProps {
   selectedLead: Lead | null;
@@ -651,9 +651,15 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                 <div className="space-y-6">
                   <div className="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-lg border border-slate-200">
                     <div>
-                      <span className="text-slate-500 font-bold block mb-0.5">Stay Dates</span>
+                      <span className="text-slate-500 font-bold block mb-0.5">📅 Stay Dates</span>
                       <strong className="text-slate-800 text-xs">
-                        {selectedLead.check_in_date} to {selectedLead.check_out_date}
+                        {formatStayRange(selectedLead.check_in_date, selectedLead.check_out_date)}
+                      </strong>
+                    </div>
+                    <div>
+                      <span className="text-slate-500 font-bold block mb-0.5">📥 Inquiry Created</span>
+                      <strong className="text-indigo-600 text-xs font-semibold">
+                        {formatCreatedDateDisplay(selectedLead.created_at)}
                       </strong>
                     </div>
                     <div>

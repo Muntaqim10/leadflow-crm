@@ -33,7 +33,45 @@ export const getDefaultEndDate = (): string => getTodayDate();
 
 export const formatDisplayDate = (dateStr: string): string => {
   if (!dateStr) return '';
-  const date = new Date(dateStr + 'T00:00:00');
+  const date = dateStr.includes('T') ? new Date(dateStr) : new Date(dateStr + 'T00:00:00');
+  if (isNaN(date.getTime())) return dateStr;
+  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+export const formatStayRange = (checkIn?: string, checkOut?: string): string => {
+  if (!checkIn) return 'Dates pending';
+  const inDate = new Date(checkIn + 'T00:00:00');
+  const inFormatted = inDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  
+  if (!checkOut || checkIn === checkOut) {
+    return inFormatted;
+  }
+
+  const outDate = new Date(checkOut + 'T00:00:00');
+  const outFormatted = outDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  const nights = Math.max(1, Math.ceil((outDate.getTime() - inDate.getTime()) / (1000 * 60 * 60 * 24)));
+  
+  return `${inFormatted} – ${outFormatted} (${nights} nt${nights > 1 ? 's' : ''})`;
+};
+
+export const formatCreatedDateDisplay = (createdAt?: string): string => {
+  if (!createdAt) return 'Recent';
+  const date = new Date(createdAt);
+  if (isNaN(date.getTime())) return createdAt;
+
+  const todayStr = formatLocalDate(new Date());
+  const createdDateStr = formatLocalDate(date);
+
+  if (createdDateStr === todayStr) {
+    return `Today, ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+  }
+
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  if (createdDateStr === formatLocalDate(yesterday)) {
+    return `Yesterday, ${date.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' })}`;
+  }
+
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 

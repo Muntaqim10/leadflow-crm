@@ -75,10 +75,10 @@ export const Header: React.FC<HeaderProps> = ({
                 setEndDate(getCurrentMonthEndDate());
               }
             }}
-            className="bg-transparent font-bold text-[10px] uppercase text-slate-500 px-2 outline-none border-r border-slate-200 cursor-pointer"
+            className="bg-transparent font-bold text-[10px] uppercase text-slate-600 px-2 outline-none border-r border-slate-200 cursor-pointer"
           >
-            <option value="created_at">Created Date</option>
-            <option value="check_in">Stay Dates</option>
+            <option value="created_at">📥 Created Date</option>
+            <option value="check_in">📅 Stay Dates</option>
           </select>
           <input
             type="date"

@@ -14,7 +14,7 @@ import {
   Plus
 } from 'lucide-react';
 import { Lead, User } from '@/types/crm';
-import { getTodayDate } from '@/lib/calculations';
+import { getTodayDate, formatStayRange, formatCreatedDateDisplay } from '@/lib/calculations';
 
 interface TaskItem {
   id: string;
@@ -385,11 +385,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <h4 className="font-bold text-sm text-slate-800 group-hover:text-[#2563EB] transition-colors">
                       {lead.name_company}
                     </h4>
-                    <div className="flex flex-col gap-1 mt-1 text-[10px]">
+                    <div className="flex flex-col gap-0.5 mt-1 text-[10px]">
+                      <div className="text-slate-700 font-semibold flex items-center gap-1">
+                        <span>📅 Stay:</span> {formatStayRange(lead.check_in_date, lead.check_out_date)}
+                      </div>
+                      {lead.created_at && (
+                        <div className="text-indigo-600 font-medium">
+                          📥 Inquired: {formatCreatedDateDisplay(lead.created_at)}
+                        </div>
+                      )}
                       <span className="text-slate-500 line-clamp-1">
                         {formatRoomDetailsDisplay(lead.rooms_or_event_details)}
                       </span>
-                      <span className="text-sky-600 font-bold">
+                      <span className="text-emerald-600 font-bold">
                         ${parseFloat(lead.revenue_potential || '0').toLocaleString()}
                       </span>
                     </div>

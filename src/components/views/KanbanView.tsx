@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { Lead } from '@/types/crm';
-import { calculateLeadScore, getLeadBookingType } from '@/lib/calculations';
+import { calculateLeadScore, getLeadBookingType, formatStayRange, formatCreatedDateDisplay } from '@/lib/calculations';
 
 export const PIPELINE_STATUSES = [
   { key: 'new', label: 'New Inquiry', color: 'bg-blue-500/10 text-blue-600 border-blue-500/20', solidColor: 'bg-blue-500' },
@@ -148,13 +148,21 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                           </span>
                         </div>
 
-                        <div className="space-y-1 text-xs text-slate-500 mb-3 mt-2.5">
-                          <div className="flex justify-between">
-                            <span className="text-slate-400">Dates:</span>
-                            <span className="text-slate-700 font-medium">
-                              {lead.check_in_date} to {lead.check_out_date}
+                        <div className="space-y-1.5 text-xs text-slate-500 mb-3 mt-2.5">
+                          <div className="flex justify-between items-center">
+                            <span className="text-slate-400 flex items-center gap-1 font-medium">📅 Stay:</span>
+                            <span className="text-slate-700 font-semibold">
+                              {formatStayRange(lead.check_in_date, lead.check_out_date)}
                             </span>
                           </div>
+                          {lead.created_at && (
+                            <div className="flex justify-between items-center">
+                              <span className="text-slate-400 flex items-center gap-1 font-medium">📥 Inquired:</span>
+                              <span className="text-indigo-600 font-medium text-[11px]">
+                                {formatCreatedDateDisplay(lead.created_at)}
+                              </span>
+                            </div>
+                          )}
                           <div className="flex justify-between">
                             <span className="text-slate-400">Details:</span>
                             <span className="text-slate-700 font-medium truncate max-w-[170px]" title={lead.rooms_or_event_details}>
@@ -201,6 +209,7 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                   <th className="p-4">Segment</th>
                   <th className="p-4">Status</th>
                   <th className="p-4">Win Prob</th>
+                  <th className="p-4">Inquiry Date</th>
                   <th className="p-4">Stay Dates</th>
                   <th className="p-4">Details</th>
                   <th className="p-4">Source</th>
@@ -248,8 +257,11 @@ export const KanbanView: React.FC<KanbanViewProps> = ({
                           {lead.status === 'confirmed' ? '🏆 100%' : lead.status === 'lost' ? '0%' : `🎯 ${score}%`}
                         </span>
                       </td>
-                      <td className="p-4 text-slate-600 font-medium">
-                        {lead.check_in_date} to {lead.check_out_date}
+                      <td className="p-4 text-indigo-600 font-medium">
+                        {formatCreatedDateDisplay(lead.created_at)}
+                      </td>
+                      <td className="p-4 text-slate-700 font-semibold">
+                        {formatStayRange(lead.check_in_date, lead.check_out_date)}
                       </td>
                       <td className="p-4 text-slate-500 max-w-[200px] truncate" title={lead.rooms_or_event_details}>
                         {formatRoomDetailsDisplay(lead.rooms_or_event_details)}
