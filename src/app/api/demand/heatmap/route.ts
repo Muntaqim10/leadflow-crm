@@ -15,8 +15,12 @@ export async function GET(request: Request) {
     const dateHeatmap: Record<string, { count: number; revenue: number; leads: any[] }> = {};
 
     activeLeads.forEach((lead) => {
-      const checkIn = new Date(lead.check_in_date);
-      const checkOut = new Date(lead.check_out_date);
+      const checkInParts = (lead.check_in_date || '').split('-');
+      const checkOutParts = (lead.check_out_date || '').split('-');
+      if (checkInParts.length < 3 || checkOutParts.length < 3) return;
+
+      const checkIn = new Date(Number(checkInParts[0]), Number(checkInParts[1]) - 1, Number(checkInParts[2]));
+      const checkOut = new Date(Number(checkOutParts[0]), Number(checkOutParts[1]) - 1, Number(checkOutParts[2]));
       const revenue = parseFloat(lead.revenue_potential || '0');
 
       // Calculate number of nights
@@ -27,7 +31,10 @@ export async function GET(request: Request) {
       // Loop through each night of the stay
       const current = new Date(checkIn);
       while (current < checkOut) {
-        const dateStr = current.toISOString().split('T')[0];
+        const y = current.getFullYear();
+        const m = String(current.getMonth() + 1).padStart(2, '0');
+        const d = String(current.getDate()).padStart(2, '0');
+        const dateStr = `${y}-${m}-${d}`;
 
         // Apply date range filters if provided
         let inRange = true;

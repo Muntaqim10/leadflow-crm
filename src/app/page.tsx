@@ -340,7 +340,7 @@ export default function App() {
   const [showCompletedTasks, setShowCompletedTasks] = useState(false);
 
   const contentRef = useRef<HTMLDivElement>(null);
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => getTodayDate(), []);
 
   // Global Date Filter State
   const [dateFilterType, setDateFilterType] = useState<'created_at' | 'check_in'>('created_at');
@@ -1450,7 +1450,7 @@ export default function App() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `leadflow-pipeline-report-${new Date().toISOString().split('T')[0]}.csv`);
+    link.setAttribute('download', `leadflow-pipeline-report-${getTodayDate()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);

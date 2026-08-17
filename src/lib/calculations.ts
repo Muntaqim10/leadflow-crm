@@ -1,25 +1,31 @@
 import { Lead, ParsedRoomDetails, BookingTypeInfo } from '@/types/crm';
 
 // Date Helpers
+export const formatLocalDate = (date: Date = new Date()): string => {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+};
+
 export const getPastWeekStartDate = (): string => {
   const today = new Date();
-  const pastWeek = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
-  return pastWeek.toISOString().split('T')[0];
+  const pastWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() - 7);
+  return formatLocalDate(pastWeek);
 };
 
 export const getTodayDate = (): string => {
-  const today = new Date();
-  return today.toISOString().split('T')[0];
+  return formatLocalDate(new Date());
 };
 
 export const getCurrentMonthStartDate = (): string => {
   const today = new Date();
-  return new Date(today.getFullYear(), today.getMonth(), 1).toISOString().split('T')[0];
+  return formatLocalDate(new Date(today.getFullYear(), today.getMonth(), 1));
 };
 
 export const getCurrentMonthEndDate = (): string => {
   const today = new Date();
-  return new Date(today.getFullYear(), today.getMonth() + 1, 0).toISOString().split('T')[0];
+  return formatLocalDate(new Date(today.getFullYear(), today.getMonth() + 1, 0));
 };
 
 export const getDefaultStartDate = (): string => getPastWeekStartDate();

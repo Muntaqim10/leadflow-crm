@@ -12,7 +12,7 @@ export function useDateFilter() {
   const [dateFilterType, setDateFilterType] = useState<'created_at' | 'check_in'>('created_at');
   const [startDate, setStartDate] = useState<string>(getPastWeekStartDate());
   const [endDate, setEndDate] = useState<string>(getTodayDate());
-  const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
+  const todayStr = useMemo(() => getTodayDate(), []);
 
   const handleDateFilterTypeChange = (newType: 'created_at' | 'check_in') => {
     setDateFilterType(newType);

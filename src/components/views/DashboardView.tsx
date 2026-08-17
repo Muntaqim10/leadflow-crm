@@ -14,6 +14,7 @@ import {
   Plus
 } from 'lucide-react';
 import { Lead, User } from '@/types/crm';
+import { getTodayDate } from '@/lib/calculations';
 
 interface TaskItem {
   id: string;
@@ -475,7 +476,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
         <div className="flex-1 overflow-y-auto space-y-3 pr-2 scrollbar-thin">
           {(() => {
-            const todayStr = new Date().toISOString().split('T')[0];
+            const todayStr = getTodayDate();
             const upcoming = (liveAppointments || []).filter((apt: any) => apt.appointment_date >= todayStr).slice(0, 5);
 
             if (upcoming.length === 0) {
