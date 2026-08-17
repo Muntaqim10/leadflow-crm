@@ -5,7 +5,7 @@ import { getSupabaseClient } from '@/lib/db';
 
 export async function GET(request: Request) {
   try {
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseClient(true);
     
     // Fetch all appointments, joining with leads and users to get names
     const { data, error } = await supabase
@@ -29,7 +29,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseClient(true);
     const body = await request.json();
     const { lead_id, client_name, agent_id, type, appointment_date, appointment_time } = body;
 
@@ -100,7 +100,7 @@ export async function POST(request: Request) {
 
 export async function PUT(request: Request) {
   try {
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseClient(true);
     const body = await request.json();
     const { id, appointment_date, appointment_time, type, agent_id } = body;
 
@@ -157,7 +157,7 @@ export async function DELETE(request: Request) {
       return NextResponse.json({ error: 'Appointment id is required' }, { status: 400 });
     }
 
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseClient(true);
 
     const { data: aptData } = await supabase
       .from('appointments')

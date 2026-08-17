@@ -30,11 +30,11 @@ export async function PUT(
     if (assignedManagerId !== undefined) {
       try {
         const users = await getRows('users');
-        const validUser = users.find((u) => u.id === assignedManagerId);
-        if (!validUser && assignedManagerId !== null) {
-          assignedManagerId = existingLead?.assigned_sales_manager_id || users[0]?.id || null;
-        }
-      } catch (e) {}
+        const validUser = users.find((u) => u.id === assignedManagerId || (u.email && u.email === assignedManagerId));
+        assignedManagerId = validUser ? validUser.id : (existingLead?.assigned_sales_manager_id || null);
+      } catch (e) {
+        assignedManagerId = null;
+      }
     }
 
     // 2. Perform the database update

@@ -5,7 +5,7 @@ import { getSupabaseClient } from '@/lib/db';
 
 export async function GET(request: Request) {
   try {
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseClient(true);
     
     const { data, error } = await supabase
       .from('tasks')
@@ -23,7 +23,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseClient(true);
     const body = await request.json();
     const { description, assigned_to, due_date, lead_id } = body;
 

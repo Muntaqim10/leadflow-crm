@@ -29,12 +29,10 @@ export async function POST(request: Request) {
     let assignedManagerId = body.assigned_sales_manager_id;
     try {
       const users = await getRows('users');
-      const validUser = users.find((u) => u.id === assignedManagerId);
-      if (!validUser) {
-        assignedManagerId = users[0]?.id || null;
-      }
+      const validUser = users.find((u) => u.id === assignedManagerId || (u.email && u.email === assignedManagerId));
+      assignedManagerId = validUser ? validUser.id : null;
     } catch (e) {
-      // If fetching users fails, keep assignedManagerId or null
+      assignedManagerId = null;
     }
 
     const newLead = await addRow('leads', {

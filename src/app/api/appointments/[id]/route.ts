@@ -7,7 +7,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseClient(true);
 
     // Fetch the appointment first to know its details for the activity log
     const { data: aptData } = await supabase
@@ -51,7 +51,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseClient(true);
     const body = await request.json();
     const { appointment_date, appointment_time, type, agent_id } = body;
 

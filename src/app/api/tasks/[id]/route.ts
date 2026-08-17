@@ -7,7 +7,7 @@ export async function PUT(
 ) {
   try {
     const { id } = await params;
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseClient(true);
     const body = await request.json();
     
     // Allow updating status, assignee, description, due date
@@ -44,7 +44,7 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params;
-    const supabase = await getSupabaseClient();
+    const supabase = await getSupabaseClient(true);
 
     const { error } = await supabase
       .from('tasks')
