@@ -677,6 +677,23 @@ export default function App() {
       else if (status === 'confirmed') setAiTemplateType('booking_confirmation');
       else if (status === 'lost') setAiTemplateType('feedback_request');
       else setAiTemplateType('thank_you');
+
+      // Fetch activities for the selected lead
+      fetch(`/api/leads/${selectedLead.id}/activities`)
+        .then(res => res.json())
+        .then(data => {
+          if (data.activities) {
+            setLeadActivities(data.activities);
+          } else {
+            setLeadActivities([]);
+          }
+        })
+        .catch(err => {
+          console.error('Failed to fetch lead activities:', err);
+          setLeadActivities([]);
+        });
+    } else {
+      setLeadActivities([]);
     }
   }, [selectedLead]);
 
