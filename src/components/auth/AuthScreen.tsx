@@ -197,22 +197,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
             </button>
 
             <div className="text-center mt-6">
-              {authMode === 'signin' && (
-                <p className="text-sm text-slate-500">
-                  Don&apos;t have an account?{' '}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAuthMode('signup');
-                      setAuthError('');
-                      setSuccessMsg('');
-                    }}
-                    className="text-blue-600 font-semibold hover:text-blue-800 transition-colors"
-                  >
-                    Sign up
-                  </button>
-                </p>
-              )}
+
               {authMode === 'signup' && (
                 <p className="text-sm text-slate-500">
                   Already have an account?{' '}
