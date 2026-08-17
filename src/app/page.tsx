@@ -12,7 +12,9 @@ import {
   getTodayDate,
   getCurrentMonthStartDate,
   getCurrentMonthEndDate,
-  formatRoomDetailsDisplay
+  formatRoomDetailsDisplay,
+  formatLocalDate,
+  calculateEstimatedRevenue
 } from '@/lib/calculations';
 
 // Common Components
@@ -286,6 +288,23 @@ export default function App() {
       setFormManager(currentUserObj?.id || users[0]?.id || '');
     }
   }, [users, currentUserObj, formManager]);
+
+  // Auto-calculate Revenue Potential dynamically when event room, rates, guest rooms, or dates change
+  useEffect(() => {
+    if (isNewLeadModalOpen || (selectedLead && isEditing)) {
+      const calculated = calculateEstimatedRevenue(
+        formCheckIn,
+        formCheckOut,
+        formDetails,
+        formEventRoomRate,
+        formGuestRooms,
+        formAccessories
+      );
+      if (calculated > 0 || isNewLeadModalOpen) {
+        setFormRevenue(calculated.toString());
+      }
+    }
+  }, [formCheckIn, formCheckOut, formDetails, formEventRoomRate, formGuestRooms, formAccessories, isNewLeadModalOpen, isEditing]);
 
   // Proposal Modal State
   const [isProposalModalOpen, setIsProposalModalOpen] = useState(false);
@@ -1313,7 +1332,9 @@ export default function App() {
     return leads.filter((lead) => {
       let targetDateStr = '';
       if (dateFilterType === 'created_at') {
-        if (lead.created_at) targetDateStr = lead.created_at.split('T')[0];
+        if (lead.created_at) {
+          targetDateStr = formatLocalDate(new Date(lead.created_at));
+        }
       } else {
         targetDateStr = lead.check_in_date || '';
       }

@@ -37,6 +37,43 @@ export const formatDisplayDate = (dateStr: string): string => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
+// Automatic Revenue Potential Calculator
+export const calculateEstimatedRevenue = (
+  checkIn: string,
+  checkOut: string,
+  eventRoom: string,
+  eventRoomRate: string,
+  guestRooms: Array<{ type: string; count: string; rate: string }>,
+  accessories: Array<{ name: string; price: string }>
+): number => {
+  let nights = 1;
+  if (checkIn && checkOut) {
+    const diff = new Date(checkOut).getTime() - new Date(checkIn).getTime();
+    nights = Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }
+
+  let total = 0;
+  if (eventRoom) {
+    total += parseFloat(eventRoomRate) || 0;
+  }
+
+  if (Array.isArray(guestRooms)) {
+    guestRooms.forEach((r) => {
+      const count = parseInt(r.count) || 0;
+      const rate = parseFloat(r.rate) || 0;
+      total += count * rate * nights;
+    });
+  }
+
+  if (Array.isArray(accessories)) {
+    accessories.forEach((a) => {
+      total += parseFloat(a.price) || 0;
+    });
+  }
+
+  return total;
+};
+
 // Lead Scoring Formula
 export const calculateLeadScore = (lead: Lead): number => {
   if (lead.status === 'confirmed') return 100;

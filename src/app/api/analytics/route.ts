@@ -26,12 +26,24 @@ export async function GET(request: Request) {
     // Apply filters
     const filteredLeads = leads.filter((lead) => {
       // Date filter (by created_at or check_in stay dates)
-      const targetDate = filterType === 'check_in'
-        ? lead.check_in_date
-        : lead.created_at?.split('T')[0];
+      if (filterType === 'created_at') {
+        if (!lead.created_at) return false;
+        const leadTime = new Date(lead.created_at).getTime();
+        if (isNaN(leadTime)) return false;
 
-      if (startDate && (!targetDate || targetDate < startDate)) return false;
-      if (endDate && (!targetDate || targetDate > endDate)) return false;
+        if (startDate) {
+          const startBound = new Date(startDate + 'T00:00:00Z').getTime() - 14 * 60 * 60 * 1000;
+          if (leadTime < startBound) return false;
+        }
+        if (endDate) {
+          const endBound = new Date(endDate + 'T23:59:59.999Z').getTime() + 14 * 60 * 60 * 1000;
+          if (leadTime > endBound) return false;
+        }
+      } else {
+        const targetDate = lead.check_in_date;
+        if (startDate && (!targetDate || targetDate < startDate)) return false;
+        if (endDate && (!targetDate || targetDate > endDate)) return false;
+      }
 
       // Lead Source filter
       if (leadSource && lead.lead_source !== leadSource) return false;
