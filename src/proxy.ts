@@ -3,26 +3,26 @@ import type { NextRequest } from 'next/server';
 import { Ratelimit } from '@upstash/ratelimit';
 import { Redis } from '@upstash/redis';
 
-// Create a new ratelimiter, that allows 5 requests per 1 minute for login
-const loginRateLimit = new Ratelimit({
+// Conditionally create rate limiters to avoid crashing if env vars are missing
+const hasUpstash = process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN;
+
+const loginRateLimit = hasUpstash ? new Ratelimit({
   redis: Redis.fromEnv(),
   limiter: Ratelimit.slidingWindow(5, '1 m'),
   analytics: false,
-});
+}) : null;
 
-// Create a ratelimiter for password resets, 3 requests per 1 hour
-const resetRateLimit = new Ratelimit({
+const resetRateLimit = hasUpstash ? new Ratelimit({
   redis: Redis.fromEnv(),
   limiter: Ratelimit.slidingWindow(3, '1 h'),
   analytics: false,
-});
+}) : null;
 
-// Create a ratelimiter for email sending, 10 requests per 1 minute
-const emailRateLimit = new Ratelimit({
+const emailRateLimit = hasUpstash ? new Ratelimit({
   redis: Redis.fromEnv(),
   limiter: Ratelimit.slidingWindow(10, '1 m'),
   analytics: false,
-});
+}) : null;
 
 export default async function proxy(request: NextRequest) {
   const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
@@ -30,7 +30,7 @@ export default async function proxy(request: NextRequest) {
 
   // 1. Rate Limiting for Auth Routes
   if (path === '/api/auth/login' || path === '/api/auth/signup' || path === '/api/auth/register') {
-    if (process.env.UPSTASH_REDIS_REST_URL) {
+    if (loginRateLimit) {
       const { success } = await loginRateLimit.limit(`auth_${ip}`);
       if (!success) {
         return NextResponse.json({ error: 'Too many authentication attempts, please try again later.' }, { status: 429 });
@@ -39,7 +39,7 @@ export default async function proxy(request: NextRequest) {
   }
 
   if (path === '/api/auth/forgot-password') {
-    if (process.env.UPSTASH_REDIS_REST_URL) {
+    if (resetRateLimit) {
       const { success } = await resetRateLimit.limit(`reset_${ip}`);
       if (!success) {
         return NextResponse.json({ error: 'Too many reset attempts, please try again later.' }, { status: 429 });
@@ -49,7 +49,7 @@ export default async function proxy(request: NextRequest) {
 
   // Rate Limiting for Email Routes
   if (path.startsWith('/api/email/')) {
-    if (process.env.UPSTASH_REDIS_REST_URL) {
+    if (emailRateLimit) {
       const { success } = await emailRateLimit.limit(`email_${ip}`);
       if (!success) {
         return NextResponse.json({ error: 'Too many email requests, please try again later.' }, { status: 429 });
