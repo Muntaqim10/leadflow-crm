@@ -80,7 +80,7 @@ async function withTimeout<T = any>(promise: PromiseLike<T>, ms: number = 8000):
 }
 
 export async function getRows(tableName: string): Promise<RowData[]> {
-  const supabase = await getSupabaseClient(true);
+  const supabase = await getSupabaseClient(false);
   const { data, error } = await withTimeout(supabase.from(tableName).select('*'), 8000);
   if (error) throw error;
   return data || [];
@@ -95,7 +95,7 @@ export async function addRow(
   const updated_at = created_at;
   const payload = { ...data, id, created_at, updated_at };
 
-  const supabase = await getSupabaseClient(true);
+  const supabase = await getSupabaseClient(false);
   const { data: insertedData, error } = await withTimeout(
     supabase.from(tableName).insert(payload).select().single(), 
     8000
@@ -112,7 +112,7 @@ export async function updateRow(
   const updated_at = new Date().toISOString();
   const payload = { ...data, updated_at };
 
-  const supabase = await getSupabaseClient(true);
+  const supabase = await getSupabaseClient(false);
   const { data: updatedData, error } = await withTimeout(
     supabase.from(tableName).update(payload).eq('id', id).select().single(),
     8000
@@ -122,7 +122,7 @@ export async function updateRow(
 }
 
 export async function deleteRow(tableName: string, id: string): Promise<void> {
-  const supabase = await getSupabaseClient(true);
+  const supabase = await getSupabaseClient(false);
   const { error } = await withTimeout(
     supabase.from(tableName).delete().eq('id', id),
     8000
