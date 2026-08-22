@@ -86,10 +86,9 @@ export const QuickBookModal: React.FC<QuickBookModalProps> = ({
             <div className="space-y-1">
               <label className="font-bold block">Time</label>
               <input
-                type="text"
+                type="time"
                 value={quickBookTime}
                 onChange={(e) => setQuickBookTime(e.target.value)}
-                placeholder="e.g. 10:00 AM"
                 className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 focus:border-blue-500 focus:bg-white outline-none"
                 required
               />

@@ -323,7 +323,7 @@ export default function App() {
   // Quick Book & Appointment Modal State
   const [isQuickBookingOpen, setIsQuickBookingOpen] = useState(false);
   const [quickBookDate, setQuickBookDate] = useState('');
-  const [quickBookTime, setQuickBookTime] = useState('10:00 AM');
+  const [quickBookTime, setQuickBookTime] = useState('10:00');
   const [quickBookType, setQuickBookType] = useState('Site Tour');
   const [quickBookClientName, setQuickBookClientName] = useState('');
   const [quickBookGroupName, setQuickBookGroupName] = useState('');
@@ -890,6 +890,16 @@ export default function App() {
         targetLeadId = leadData.lead?.id || leadData.id;
       }
 
+      // Format time from 24h (HH:mm) to 12h (hh:mm A) for consistency
+      let formattedTime = quickBookTime;
+      if (quickBookTime && quickBookTime.includes(':')) {
+        const [h, m] = quickBookTime.split(':');
+        let hour = parseInt(h, 10);
+        const ampm = hour >= 12 ? 'PM' : 'AM';
+        hour = hour % 12 || 12;
+        formattedTime = `${hour}:${m} ${ampm}`;
+      }
+
       const res = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -897,7 +907,7 @@ export default function App() {
           lead_id: targetLeadId,
           agent_id: targetAgentId,
           appointment_date: quickBookDate,
-          appointment_time: quickBookTime,
+          appointment_time: formattedTime,
           type: quickBookType
         })
       });
