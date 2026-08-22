@@ -14,8 +14,12 @@ interface QuickBookModalProps {
   setQuickBookType: (val: string) => void;
   quickBookClientName: string;
   setQuickBookClientName: (val: string) => void;
+  quickBookGroupName: string;
+  setQuickBookGroupName: (val: string) => void;
   quickBookClientEmail: string;
   setQuickBookClientEmail: (val: string) => void;
+  quickBookClientPhone: string;
+  setQuickBookClientPhone: (val: string) => void;
   quickBookAgentId: string;
   setQuickBookAgentId: (val: string) => void;
   users: User[];
@@ -36,8 +40,12 @@ export const QuickBookModal: React.FC<QuickBookModalProps> = ({
   setQuickBookType,
   quickBookClientName,
   setQuickBookClientName,
+  quickBookGroupName,
+  setQuickBookGroupName,
   quickBookClientEmail,
   setQuickBookClientEmail,
+  quickBookClientPhone,
+  setQuickBookClientPhone,
   quickBookAgentId,
   setQuickBookAgentId,
   users,
@@ -102,15 +110,26 @@ export const QuickBookModal: React.FC<QuickBookModalProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="font-bold block">Client / Group Name</label>
+            <label className="font-bold block">Client Name</label>
+            <input
+              type="text"
+              value={quickBookClientName}
+              onChange={(e) => setQuickBookClientName(e.target.value)}
+              placeholder="e.g. John Doe"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 focus:border-blue-500 focus:bg-white outline-none font-medium text-slate-800"
+              required
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="font-bold block">Group / Company Name</label>
             <input
               type="text"
               list="leads-list"
-              value={quickBookClientName}
-              onChange={(e) => setQuickBookClientName(e.target.value)}
+              value={quickBookGroupName}
+              onChange={(e) => setQuickBookGroupName(e.target.value)}
               placeholder="e.g. Acme Corp (Type to search or create new)"
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 focus:border-blue-500 focus:bg-white outline-none font-medium text-slate-800"
-              required
               autoComplete="off"
             />
             <datalist id="leads-list">
@@ -121,7 +140,7 @@ export const QuickBookModal: React.FC<QuickBookModalProps> = ({
           </div>
 
           <div className="space-y-1">
-            <label className="font-bold block">Client Email</label>
+            <label className="font-bold block">Email</label>
             <input
               type="email"
               value={quickBookClientEmail}
@@ -129,6 +148,17 @@ export const QuickBookModal: React.FC<QuickBookModalProps> = ({
               placeholder="e.g. contact@acmecorp.com"
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 focus:border-blue-500 focus:bg-white outline-none font-medium text-slate-800"
               required
+            />
+          </div>
+
+          <div className="space-y-1">
+            <label className="font-bold block">Contact (Phone)</label>
+            <input
+              type="tel"
+              value={quickBookClientPhone}
+              onChange={(e) => setQuickBookClientPhone(e.target.value)}
+              placeholder="e.g. (555) 123-4567"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 focus:border-blue-500 focus:bg-white outline-none font-medium text-slate-800"
             />
           </div>
 

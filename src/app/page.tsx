@@ -326,9 +326,24 @@ export default function App() {
   const [quickBookTime, setQuickBookTime] = useState('10:00 AM');
   const [quickBookType, setQuickBookType] = useState('Site Tour');
   const [quickBookClientName, setQuickBookClientName] = useState('');
+  const [quickBookGroupName, setQuickBookGroupName] = useState('');
   const [quickBookClientEmail, setQuickBookClientEmail] = useState('');
+  const [quickBookClientPhone, setQuickBookClientPhone] = useState('');
   const [quickBookAgentId, setQuickBookAgentId] = useState('');
   const [apptSaving, setApptSaving] = useState(false);
+
+  // Auto-populate email and phone if an existing group is selected
+  useEffect(() => {
+    if (quickBookGroupName && isQuickBookingOpen) {
+      const existingLead = leads.find(
+        (l) => l.name_company.toLowerCase() === quickBookGroupName.toLowerCase().trim()
+      );
+      if (existingLead) {
+        if (existingLead.email) setQuickBookClientEmail(existingLead.email);
+        if (existingLead.phone) setQuickBookClientPhone(existingLead.phone);
+      }
+    }
+  }, [quickBookGroupName, leads, isQuickBookingOpen]);
 
   const [activeAppointment, setActiveAppointment] = useState<any>(null);
   const [isEditingAppointment, setIsEditingAppointment] = useState(false);
@@ -844,9 +859,9 @@ export default function App() {
     try {
       const targetAgentId = quickBookAgentId || currentUserObj?.id || users[0]?.id || null;
 
-      // Try to find an existing lead by name (case-insensitive)
+      const targetNameCompany = quickBookGroupName.trim() || quickBookClientName.trim() || 'Quick Book Client';
       const existingLead = leads.find(
-        (l) => l.name_company.toLowerCase() === quickBookClientName.toLowerCase().trim()
+        (l) => l.name_company.toLowerCase() === targetNameCompany.toLowerCase()
       );
 
       let targetLeadId = existingLead?.id;
@@ -857,8 +872,10 @@ export default function App() {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            name_company: quickBookClientName || 'Quick Book Client',
+            name_company: targetNameCompany,
             email: quickBookClientEmail || 'quickbook@example.com',
+            phone: quickBookClientPhone || '',
+            rooms_or_event_details: `Client Name: ${quickBookClientName}`,
             lead_source: 'sales_call',
             check_in_date: quickBookDate,
             check_out_date: quickBookDate,
@@ -890,7 +907,9 @@ export default function App() {
       setSuccessMsg('Appointment scheduled successfully!');
       setIsQuickBookingOpen(false);
       setQuickBookClientName('');
+      setQuickBookGroupName('');
       setQuickBookClientEmail('');
+      setQuickBookClientPhone('');
       mutateAppointments();
       fetchData();
     } catch (err: any) {
@@ -1921,8 +1940,12 @@ export default function App() {
         setQuickBookType={setQuickBookType}
         quickBookClientName={quickBookClientName}
         setQuickBookClientName={setQuickBookClientName}
+        quickBookGroupName={quickBookGroupName}
+        setQuickBookGroupName={setQuickBookGroupName}
         quickBookClientEmail={quickBookClientEmail}
         setQuickBookClientEmail={setQuickBookClientEmail}
+        quickBookClientPhone={quickBookClientPhone}
+        setQuickBookClientPhone={setQuickBookClientPhone}
         quickBookAgentId={quickBookAgentId}
         setQuickBookAgentId={setQuickBookAgentId}
         users={users}
