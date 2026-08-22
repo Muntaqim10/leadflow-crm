@@ -1,12 +1,19 @@
 import { NextResponse } from 'next/server';
 import { getSupabaseClient } from '@/lib/db';
 import crypto from 'crypto';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
   try {
     const { email, password } = await request.json();
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 });
+    }
+
+    const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+    const isAllowed = await rateLimit(`login_${ip}_${email}`, 5, 60); // 5 attempts per minute
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Too many login attempts. Please try again later.' }, { status: 429 });
     }
 
     const supabase = await getSupabaseClient();

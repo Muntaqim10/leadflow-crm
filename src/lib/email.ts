@@ -264,7 +264,6 @@ export async function sendEmail(logId: string, content: string, wasEditedByHuman
         text: bodyText,
       });
 
-      console.log(`[Email Dispatch] Sent via SMTP. Message ID: ${info.messageId}`);
       sendResult = `Sent email to ${recipientEmail} via SMTP`;
       smtpSuccess = true;
     } catch (smtpError: any) {
@@ -278,7 +277,6 @@ export async function sendEmail(logId: string, content: string, wasEditedByHuman
     sendResult = wasEditedByHuman
       ? `Copied to clipboard and logged to CRM database (no SMTP configured)`
       : `Logged auto-responder to CRM database (no SMTP configured)`;
-    console.log(`[Email Mock Dispatch] Log ID: ${logId}. Recipient: [REDACTED]`);
   }
 
   // Update email log in database

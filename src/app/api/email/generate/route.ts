@@ -2,13 +2,20 @@ import { NextResponse } from 'next/server';
 import { generateAiEmail } from '@/lib/email';
 import { getSupabaseClient } from '@/lib/db';
 import crypto from 'crypto';
+import { rateLimit } from '@/lib/rate-limit';
 
 export async function POST(request: Request) {
   try {
     const { leadId, templateType } = await request.json();
 
     if (!leadId) {
-      return NextResponse.json({ error: 'Missing leadId' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing required fields for email generation' }, { status: 400 });
+    }
+
+    const ip = request.headers.get('x-forwarded-for') || '127.0.0.1';
+    const isAllowed = await rateLimit(`email_gen_${ip}`, 10, 60); // 10 attempts per minute
+    if (!isAllowed) {
+      return NextResponse.json({ error: 'Too many generation requests. Please try again later.' }, { status: 429 });
     }
 
     let senderName = 'Sales Team';

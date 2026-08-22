@@ -14,7 +14,8 @@ import {
   getCurrentMonthEndDate,
   formatRoomDetailsDisplay,
   formatLocalDate,
-  calculateEstimatedRevenue
+  calculateEstimatedRevenue,
+  getLeadBookingType
 } from '@/lib/calculations';
 
 // Common Components
@@ -362,6 +363,7 @@ export default function App() {
 
   const [startDate, setStartDate] = useState(getPastWeekStartDate());
   const [endDate, setEndDate] = useState(getTodayDate());
+  const [bookingTypeFilter, setBookingTypeFilter] = useState('all');
 
   const fetchAnalytics = async () => {
     try {
@@ -1359,9 +1361,16 @@ export default function App() {
       if (startDate && targetDateStr < startDate) return false;
       if (endDate && targetDateStr > endDate) return false;
 
+      if (bookingTypeFilter !== 'all') {
+        const bookingType = getLeadBookingType(lead.rooms_or_event_details);
+        if (bookingType.type !== bookingTypeFilter) {
+          return false;
+        }
+      }
+
       return true;
     });
-  }, [leads, dateFilterType, startDate, endDate]);
+  }, [leads, dateFilterType, startDate, endDate, bookingTypeFilter]);
 
   const activeLeads = useMemo(() => {
     return filteredLeads.filter((l) => l.status !== 'confirmed' && l.status !== 'lost');
@@ -1545,6 +1554,8 @@ export default function App() {
           fetchData={fetchData}
           dateFilterType={dateFilterType}
           setDateFilterType={setDateFilterType}
+          bookingTypeFilter={bookingTypeFilter}
+          setBookingTypeFilter={setBookingTypeFilter}
           startDate={startDate}
           setStartDate={setStartDate}
           endDate={endDate}

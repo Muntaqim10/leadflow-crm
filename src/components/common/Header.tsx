@@ -8,6 +8,8 @@ interface HeaderProps {
   fetchData: () => void;
   dateFilterType: 'created_at' | 'check_in';
   setDateFilterType: (type: 'created_at' | 'check_in') => void;
+  bookingTypeFilter: string;
+  setBookingTypeFilter: (val: string) => void;
   startDate: string;
   setStartDate: (val: string) => void;
   endDate: string;
@@ -27,6 +29,8 @@ export const Header: React.FC<HeaderProps> = ({
   fetchData,
   dateFilterType,
   setDateFilterType,
+  bookingTypeFilter,
+  setBookingTypeFilter,
   startDate,
   setStartDate,
   endDate,
@@ -62,6 +66,17 @@ export const Header: React.FC<HeaderProps> = ({
       {/* Global Date Filter Controls for Dashboard, Leads (Kanban), and Analytics */}
       {(activeTab === 'dashboard' || activeTab === 'kanban' || activeTab === 'analytics') && (
         <div className="hidden md:flex items-center gap-2 bg-white border border-slate-200 rounded-lg p-1.5 text-xs text-slate-700 shadow-sm">
+          <select
+            value={bookingTypeFilter}
+            onChange={(e) => setBookingTypeFilter(e.target.value)}
+            className="bg-transparent font-bold text-[10px] uppercase text-slate-600 px-2 outline-none border-r border-slate-200 cursor-pointer"
+          >
+            <option value="all">All Types</option>
+            <option value="event">Event Only</option>
+            <option value="stay_block">Room Block Only</option>
+            <option value="both">Event & Rooms</option>
+            <option value="general">General Inquiry</option>
+          </select>
           <select
             value={dateFilterType}
             onChange={(e) => {
