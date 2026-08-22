@@ -12,8 +12,6 @@ interface QuickBookModalProps {
   setQuickBookTime: (val: string) => void;
   quickBookType: string;
   setQuickBookType: (val: string) => void;
-  quickBookLeadId: string;
-  setQuickBookLeadId: (val: string) => void;
   quickBookClientName: string;
   setQuickBookClientName: (val: string) => void;
   quickBookAgentId: string;
@@ -34,8 +32,6 @@ export const QuickBookModal: React.FC<QuickBookModalProps> = ({
   setQuickBookTime,
   quickBookType,
   setQuickBookType,
-  quickBookLeadId,
-  setQuickBookLeadId,
   quickBookClientName,
   setQuickBookClientName,
   quickBookAgentId,
@@ -103,34 +99,22 @@ export const QuickBookModal: React.FC<QuickBookModalProps> = ({
 
           <div className="space-y-1">
             <label className="font-bold block">Client / Group Name</label>
-            <select
-              value={quickBookLeadId}
-              onChange={(e) => setQuickBookLeadId(e.target.value)}
+            <input
+              type="text"
+              list="leads-list"
+              value={quickBookClientName}
+              onChange={(e) => setQuickBookClientName(e.target.value)}
+              placeholder="e.g. Acme Corp (Type to search or create new)"
               className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 focus:border-blue-500 focus:bg-white outline-none font-medium text-slate-800"
-            >
-              <option value="" disabled>Select a lead...</option>
+              required
+              autoComplete="off"
+            />
+            <datalist id="leads-list">
               {leads.map((l) => (
-                <option key={l.id} value={l.id}>
-                  {l.name_company} {l.status === 'confirmed' ? '(Confirmed)' : ''}
-                </option>
+                <option key={l.id} value={l.name_company} />
               ))}
-              <option value="new">+ Create New Client...</option>
-            </select>
+            </datalist>
           </div>
-
-          {quickBookLeadId === 'new' && (
-            <div className="space-y-1">
-              <label className="font-bold block">New Client Name</label>
-              <input
-                type="text"
-                value={quickBookClientName}
-                onChange={(e) => setQuickBookClientName(e.target.value)}
-                placeholder="e.g. Acme Corp"
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 focus:border-blue-500 focus:bg-white outline-none font-medium text-slate-800"
-                required={quickBookLeadId === 'new'}
-              />
-            </div>
-          )}
 
           <div className="space-y-1">
             <label className="font-bold block">Host Agent</label>

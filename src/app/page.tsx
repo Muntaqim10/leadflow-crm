@@ -326,7 +326,6 @@ export default function App() {
   const [quickBookTime, setQuickBookTime] = useState('10:00 AM');
   const [quickBookType, setQuickBookType] = useState('Site Tour');
   const [quickBookClientName, setQuickBookClientName] = useState('');
-  const [quickBookLeadId, setQuickBookLeadId] = useState('');
   const [quickBookAgentId, setQuickBookAgentId] = useState('');
   const [apptSaving, setApptSaving] = useState(false);
 
@@ -844,10 +843,15 @@ export default function App() {
     try {
       const targetAgentId = quickBookAgentId || currentUserObj?.id || users[0]?.id || null;
 
-      let targetLeadId = quickBookLeadId;
+      // Try to find an existing lead by name (case-insensitive)
+      const existingLead = leads.find(
+        (l) => l.name_company.toLowerCase() === quickBookClientName.toLowerCase().trim()
+      );
 
-      // Create a new lead if 'new' or none is selected
-      if (!targetLeadId || targetLeadId === 'new') {
+      let targetLeadId = existingLead?.id;
+
+      // Create a new lead if no existing lead is found
+      if (!targetLeadId) {
         const leadRes = await fetch('/api/leads', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -884,7 +888,6 @@ export default function App() {
       setSuccessMsg('Appointment scheduled successfully!');
       setIsQuickBookingOpen(false);
       setQuickBookClientName('');
-      setQuickBookLeadId('');
       mutateAppointments();
       fetchData();
     } catch (err: any) {
@@ -1915,8 +1918,6 @@ export default function App() {
         setQuickBookType={setQuickBookType}
         quickBookClientName={quickBookClientName}
         setQuickBookClientName={setQuickBookClientName}
-        quickBookLeadId={quickBookLeadId}
-        setQuickBookLeadId={setQuickBookLeadId}
         quickBookAgentId={quickBookAgentId}
         setQuickBookAgentId={setQuickBookAgentId}
         users={users}
