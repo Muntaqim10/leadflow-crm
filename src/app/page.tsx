@@ -857,6 +857,7 @@ export default function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name_company: quickBookClientName || 'Quick Book Client',
+            email: 'quickbook@example.com',
             lead_source: 'sales_call',
             check_in_date: quickBookDate,
             check_out_date: quickBookDate,
