@@ -326,7 +326,8 @@ export default function App() {
   const [quickBookTime, setQuickBookTime] = useState('10:00 AM');
   const [quickBookType, setQuickBookType] = useState('Site Tour');
   const [quickBookClientName, setQuickBookClientName] = useState('');
-  const [quickBookAgentId, setQuickBookAgentId] = useState('1');
+  const [quickBookLeadId, setQuickBookLeadId] = useState('');
+  const [quickBookAgentId, setQuickBookAgentId] = useState('');
   const [apptSaving, setApptSaving] = useState(false);
 
   const [activeAppointment, setActiveAppointment] = useState<any>(null);
@@ -843,29 +844,34 @@ export default function App() {
     try {
       const targetAgentId = quickBookAgentId || currentUserObj?.id || users[0]?.id || null;
 
-      const leadRes = await fetch('/api/leads', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name_company: quickBookClientName || 'Quick Book Client',
-          lead_source: 'sales_call',
-          check_in_date: quickBookDate,
-          check_out_date: quickBookDate,
-          assigned_sales_manager_id: targetAgentId,
-          status: 'new',
-          market_segment: 'corporate'
-        })
-      });
+      let targetLeadId = quickBookLeadId;
 
-      if (!leadRes.ok) throw new Error('Failed to create contact for appointment');
-      const leadData = await leadRes.json();
-      const newLeadId = leadData.lead?.id || leadData.id;
+      // Create a new lead if 'new' or none is selected
+      if (!targetLeadId || targetLeadId === 'new') {
+        const leadRes = await fetch('/api/leads', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name_company: quickBookClientName || 'Quick Book Client',
+            lead_source: 'sales_call',
+            check_in_date: quickBookDate,
+            check_out_date: quickBookDate,
+            assigned_sales_manager_id: targetAgentId,
+            status: 'new',
+            market_segment: 'corporate'
+          })
+        });
+
+        if (!leadRes.ok) throw new Error('Failed to create contact for appointment');
+        const leadData = await leadRes.json();
+        targetLeadId = leadData.lead?.id || leadData.id;
+      }
 
       const res = await fetch('/api/appointments', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          lead_id: newLeadId,
+          lead_id: targetLeadId,
           agent_id: targetAgentId,
           appointment_date: quickBookDate,
           appointment_time: quickBookTime,
@@ -878,6 +884,7 @@ export default function App() {
       setSuccessMsg('Appointment scheduled successfully!');
       setIsQuickBookingOpen(false);
       setQuickBookClientName('');
+      setQuickBookLeadId('');
       mutateAppointments();
       fetchData();
     } catch (err: any) {
@@ -1908,9 +1915,12 @@ export default function App() {
         setQuickBookType={setQuickBookType}
         quickBookClientName={quickBookClientName}
         setQuickBookClientName={setQuickBookClientName}
+        quickBookLeadId={quickBookLeadId}
+        setQuickBookLeadId={setQuickBookLeadId}
         quickBookAgentId={quickBookAgentId}
         setQuickBookAgentId={setQuickBookAgentId}
         users={users}
+        leads={leads}
         handleSaveQuickAppointment={handleSaveQuickAppointment}
         apptSaving={apptSaving}
         todayStr={todayStr}
