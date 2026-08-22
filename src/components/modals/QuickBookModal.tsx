@@ -14,6 +14,8 @@ interface QuickBookModalProps {
   setQuickBookType: (val: string) => void;
   quickBookClientName: string;
   setQuickBookClientName: (val: string) => void;
+  quickBookClientEmail: string;
+  setQuickBookClientEmail: (val: string) => void;
   quickBookAgentId: string;
   setQuickBookAgentId: (val: string) => void;
   users: User[];
@@ -34,6 +36,8 @@ export const QuickBookModal: React.FC<QuickBookModalProps> = ({
   setQuickBookType,
   quickBookClientName,
   setQuickBookClientName,
+  quickBookClientEmail,
+  setQuickBookClientEmail,
   quickBookAgentId,
   setQuickBookAgentId,
   users,
@@ -114,6 +118,18 @@ export const QuickBookModal: React.FC<QuickBookModalProps> = ({
                 <option key={l.id} value={l.name_company} />
               ))}
             </datalist>
+          </div>
+
+          <div className="space-y-1">
+            <label className="font-bold block">Client Email</label>
+            <input
+              type="email"
+              value={quickBookClientEmail}
+              onChange={(e) => setQuickBookClientEmail(e.target.value)}
+              placeholder="e.g. contact@acmecorp.com"
+              className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 focus:border-blue-500 focus:bg-white outline-none font-medium text-slate-800"
+              required
+            />
           </div>
 
           <div className="space-y-1">

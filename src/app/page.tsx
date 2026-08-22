@@ -326,6 +326,7 @@ export default function App() {
   const [quickBookTime, setQuickBookTime] = useState('10:00 AM');
   const [quickBookType, setQuickBookType] = useState('Site Tour');
   const [quickBookClientName, setQuickBookClientName] = useState('');
+  const [quickBookClientEmail, setQuickBookClientEmail] = useState('');
   const [quickBookAgentId, setQuickBookAgentId] = useState('');
   const [apptSaving, setApptSaving] = useState(false);
 
@@ -857,7 +858,7 @@ export default function App() {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             name_company: quickBookClientName || 'Quick Book Client',
-            email: 'quickbook@example.com',
+            email: quickBookClientEmail || 'quickbook@example.com',
             lead_source: 'sales_call',
             check_in_date: quickBookDate,
             check_out_date: quickBookDate,
@@ -889,6 +890,7 @@ export default function App() {
       setSuccessMsg('Appointment scheduled successfully!');
       setIsQuickBookingOpen(false);
       setQuickBookClientName('');
+      setQuickBookClientEmail('');
       mutateAppointments();
       fetchData();
     } catch (err: any) {
@@ -1919,6 +1921,8 @@ export default function App() {
         setQuickBookType={setQuickBookType}
         quickBookClientName={quickBookClientName}
         setQuickBookClientName={setQuickBookClientName}
+        quickBookClientEmail={quickBookClientEmail}
+        setQuickBookClientEmail={setQuickBookClientEmail}
         quickBookAgentId={quickBookAgentId}
         setQuickBookAgentId={setQuickBookAgentId}
         users={users}
