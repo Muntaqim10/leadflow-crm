@@ -79,7 +79,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
               </div>
               <div>
                 <h2 className="text-lg font-bold text-slate-800">AI Executive Summary</h2>
-                <p className="text-xs text-slate-500">Groq-powered pipeline analysis</p>
+                <p className="text-xs text-slate-500">AI-powered pipeline analysis</p>
               </div>
             </div>
             <button
@@ -103,7 +103,7 @@ export const AnalyticsView: React.FC<AnalyticsViewProps> = ({
 
           {isGeneratingInsights && !aiInsights && (
             <div className="py-8 text-center animate-pulse">
-              <p className="text-blue-600 font-medium text-sm">Groq Llama 3.1 analyzing pipeline data...</p>
+              <p className="text-blue-600 font-medium text-sm">Analyzing pipeline data...</p>
             </div>
           )}
 

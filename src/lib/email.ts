@@ -1,4 +1,5 @@
 import { getRows, addRow, updateRow } from './db';
+import { generateChatCompletion } from './ai';
 import nodemailer from 'nodemailer';
 
 export interface EmailServiceResult {
@@ -8,7 +9,7 @@ export interface EmailServiceResult {
 }
 
 /**
- * Generates an AI reply to a lead based on status and email template type using Groq Llama 3.1
+ * Generates an AI reply to a lead based on status and email template type via OpenRouter
  */
 export async function generateAiEmail(leadId: string, templateType?: string, senderName = 'Sales Team'): Promise<{ logId: string; content: string; templateType: string }> {
   // 1. Fetch lead details
@@ -120,24 +121,12 @@ export async function generateAiEmail(leadId: string, templateType?: string, sen
     .replace(/{details}/g, details)
     .replace(/{revenue}/g, revenue);
 
-  // 4. Call Groq API with context-aware prompts
-  const apiKey = process.env.GROQ_API_KEY;
-  if (!apiKey) {
-    throw new Error('Groq API key not configured');
-  }
-
-  const groqResponse = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${apiKey}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'llama-3.1-8b-instant',
-      messages: [
-        {
-          role: 'system',
-          content: `You are an AI assistant for a premium hotel sales team. You are highly context-aware of leads and their sales pipeline status.
+  // 4. Call OpenRouter with context-aware prompts
+  const generatedContent = (await generateChatCompletion(
+    [
+      {
+        role: 'system',
+        content: `You are an AI assistant for a premium hotel sales team. You are highly context-aware of leads and their sales pipeline status.
 Write a professional, personalized email for the client based on the lead context and template.
 
 Lead Context Details:
@@ -171,24 +160,14 @@ Output constraints:
 - Generate a professional email starting with "Subject: [Your Subject Line]".
 - Do not include any introductory text, greeting to the user, or conversational remarks outside the email text itself.
 - Base your draft on the provided template, but polish it dynamically using the lead details and tone guidelines above.`
-        },
-        {
-          role: 'user',
-          content: `Personalize and polish this template according to the lead context:\n\n${personalizedPrompt}`
-        }
-      ],
-      temperature: 0.3,
-    }),
-  });
-
-  if (!groqResponse.ok) {
-    const errorText = await groqResponse.text();
-    console.error('Groq API Error Response:', errorText);
-    throw new Error(`Groq API returned status ${groqResponse.status}`);
-  }
-
-  const data = await groqResponse.json();
-  const generatedContent = data.choices?.[0]?.message?.content || personalizedPrompt;
+      },
+      {
+        role: 'user',
+        content: `Personalize and polish this template according to the lead context:\n\n${personalizedPrompt}`
+      }
+    ],
+    { temperature: 0.3 }
+  )) || personalizedPrompt;
 
   // 5. Log the generated email in database
   const emailLogEntry = await addRow('email_log', {

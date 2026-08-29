@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { generateAiEmail } from '@/lib/email';
+import { AiConfigError } from '@/lib/ai';
 import { getSupabaseClient } from '@/lib/db';
 import crypto from 'crypto';
 import { rateLimit } from '@/lib/rate-limit';
@@ -35,6 +36,11 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result);
   } catch (error: any) {
+    // A missing key is a deployment misconfiguration, not a leak risk — surface it
+    // directly so the UI can say what is actually wrong.
+    if (error instanceof AiConfigError) {
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
     const correlationId = crypto.randomUUID();
     console.error(`[Error ${correlationId}] Failed to generate AI email::`, error);
     return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });

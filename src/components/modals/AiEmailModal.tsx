@@ -14,6 +14,7 @@ interface AiEmailModalProps {
   setEmailWasEdited: (val: boolean) => void;
   handleCopyEmail: () => void;
   isSendingEmail: boolean;
+  generationError?: string;
 }
 
 export const AiEmailModal: React.FC<AiEmailModalProps> = ({
@@ -25,7 +26,8 @@ export const AiEmailModal: React.FC<AiEmailModalProps> = ({
   setAiDraft,
   setEmailWasEdited,
   handleCopyEmail,
-  isSendingEmail
+  isSendingEmail,
+  generationError
 }) => {
   if (!isOpen || !selectedLead) return null;
 
@@ -64,7 +66,7 @@ export const AiEmailModal: React.FC<AiEmailModalProps> = ({
           {isGeneratingAi ? (
             <div className="h-48 flex flex-col items-center justify-center gap-3">
               <div className="w-8 h-8 border-3 border-blue-600 border-t-transparent rounded-full animate-spin"></div>
-              <p className="text-slate-500">Groq Llama3 polishing follow-up draft...</p>
+              <p className="text-slate-500">AI is polishing your follow-up draft...</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -74,13 +76,23 @@ export const AiEmailModal: React.FC<AiEmailModalProps> = ({
                   Manual Override Safeguard Active
                 </span>
               </div>
+              {generationError && (
+                <div className="bg-red-50 border border-red-200 text-red-700 rounded-lg px-3 py-2">
+                  {generationError}
+                </div>
+              )}
               <textarea
                 value={aiDraft}
+                placeholder={
+                  generationError
+                    ? 'Generation failed — you can write the follow-up manually here.'
+                    : 'No draft generated yet.'
+                }
                 onChange={(e) => {
                   setAiDraft(e.target.value);
                   setEmailWasEdited(true);
                 }}
-                className="w-full h-72 bg-[#0B0F19] border border-slate-700 rounded-lg p-4 text-xs font-mono leading-relaxed text-[#E2E8F0] focus:border-[#1F3A60] outline-none resize-none"
+                className="w-full h-72 bg-white border border-slate-300 rounded-lg p-4 text-xs font-mono leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-blue-500 outline-none resize-none"
               />
             </div>
           )}

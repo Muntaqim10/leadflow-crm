@@ -313,6 +313,7 @@ export default function App() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [emailWasEdited, setEmailWasEdited] = useState(false);
   const [aiDraftLogId, setAiDraftLogId] = useState<string | null>(null);
+  const [aiGenerationError, setAiGenerationError] = useState('');
 
   // Lead Activities State
   const [leadActivities, setLeadActivities] = useState<any[]>([]);
@@ -1301,6 +1302,7 @@ export default function App() {
     setIsGeneratingAi(true);
     setAiDraft('');
     setErrorMsg('');
+    setAiGenerationError('');
     setEmailWasEdited(false);
 
     try {
@@ -1313,11 +1315,13 @@ export default function App() {
         })
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to call Groq AI service');
+      if (!res.ok) throw new Error(data.error || 'Failed to call the AI service');
       setAiDraft(data.content);
       setAiDraftLogId(data.logId);
     } catch (err: any) {
-      setErrorMsg(err.message || 'Failed to generate email template.');
+      const message = err.message || 'Failed to generate email template.';
+      setErrorMsg(message);
+      setAiGenerationError(message);
     } finally {
       setIsGeneratingAi(false);
     }
@@ -1937,6 +1941,7 @@ export default function App() {
         setEmailWasEdited={setEmailWasEdited}
         handleCopyEmail={handleCopyEmail}
         isSendingEmail={isSendingEmail}
+        generationError={aiGenerationError}
       />
 
       <QuickBookModal
