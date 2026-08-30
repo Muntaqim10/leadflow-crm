@@ -75,6 +75,25 @@ export const formatCreatedDateDisplay = (createdAt?: string): string => {
   return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };
 
+// Event room charges: gratuity is added to the rental, and tax applies to both the
+// rental and that gratuity.
+export const EVENT_ROOM_GRATUITY_RATE = 0.2;
+export const EVENT_ROOM_TAX_RATE = 0.06;
+
+export interface EventRoomCharges {
+  rental: number;
+  gratuity: number;
+  tax: number;
+  total: number;
+}
+
+export const calculateEventRoomCharges = (eventRoomRate: string | number): EventRoomCharges => {
+  const rental = (typeof eventRoomRate === 'number' ? eventRoomRate : parseFloat(eventRoomRate)) || 0;
+  const gratuity = rental * EVENT_ROOM_GRATUITY_RATE;
+  const tax = (rental + gratuity) * EVENT_ROOM_TAX_RATE;
+  return { rental, gratuity, tax, total: rental + gratuity + tax };
+};
+
 // Automatic Revenue Potential Calculator
 export const calculateEstimatedRevenue = (
   checkIn: string,
@@ -92,7 +111,7 @@ export const calculateEstimatedRevenue = (
 
   let total = 0;
   if (eventRoom) {
-    total += parseFloat(eventRoomRate) || 0;
+    total += calculateEventRoomCharges(eventRoomRate).total;
   }
 
   if (Array.isArray(guestRooms)) {

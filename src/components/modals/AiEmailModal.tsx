@@ -92,7 +92,7 @@ export const AiEmailModal: React.FC<AiEmailModalProps> = ({
                   setAiDraft(e.target.value);
                   setEmailWasEdited(true);
                 }}
-                className="w-full h-72 bg-white border border-slate-300 rounded-lg p-4 text-xs font-mono leading-relaxed text-slate-800 placeholder:text-slate-400 focus:border-blue-500 outline-none resize-none"
+                className="w-full h-72 bg-[#0B0F19] border border-slate-700 rounded-lg p-4 text-xs font-mono leading-relaxed text-[#E2E8F0] placeholder:text-slate-500 focus:border-[#1F3A60] outline-none resize-none"
               />
             </div>
           )}

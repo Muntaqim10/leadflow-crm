@@ -3,6 +3,11 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
 import { User } from '@/types/crm';
+import {
+  calculateEventRoomCharges,
+  EVENT_ROOM_GRATUITY_RATE,
+  EVENT_ROOM_TAX_RATE
+} from '@/lib/calculations';
 
 interface CreateLeadModalProps {
   isOpen: boolean;
@@ -91,6 +96,23 @@ export const CreateLeadModal: React.FC<CreateLeadModalProps> = ({
 }) => {
   if (!isOpen) return null;
 
+  // Breakdown behind the read-only Revenue Potential summary, mirroring
+  // calculateEstimatedRevenue, which is what actually sets formRevenue.
+  const eventRoomCharges = calculateEventRoomCharges(formEventRoomRate);
+  const stayNights = (() => {
+    if (!formCheckIn || !formCheckOut) return 1;
+    const diff = new Date(formCheckOut).getTime() - new Date(formCheckIn).getTime();
+    return Math.max(1, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  })();
+  const guestRoomsSubtotal = formGuestRooms.reduce(
+    (sum, room) => sum + (parseInt(room.count) || 0) * (parseFloat(room.rate) || 0) * stayNights,
+    0
+  );
+  const accessoriesSubtotal = formAccessories.reduce(
+    (sum, acc) => sum + (parseFloat(acc.price) || 0),
+    0
+  );
+
   return (
     <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
       <div className="bg-white border border-slate-200 rounded-xl max-w-lg w-full overflow-hidden shadow-2xl flex flex-col max-h-[90vh]">
@@ -176,17 +198,6 @@ export const CreateLeadModal: React.FC<CreateLeadModalProps> = ({
               </div>
 
               <div>
-                <label className="block text-slate-600 font-bold mb-1">Revenue Potential ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={formRevenue}
-                  onChange={(e) => setFormRevenue(e.target.value)}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2.5 outline-none focus:border-[#1F3A60] focus:ring-1 focus:ring-[#1F3A60] text-slate-800"
-                />
-              </div>
-
-              <div>
                 <label className="block text-slate-600 font-bold mb-1">Lead Source</label>
                 <select
                   value={formLeadSource}
@@ -255,8 +266,8 @@ export const CreateLeadModal: React.FC<CreateLeadModalProps> = ({
                       Room Rental Price ($)
                       {formEventRoomRate && !isNaN(Number(formEventRoomRate)) && (
                         <span className="ml-2 text-[11px] text-indigo-600 font-bold">
-                          (+ ${(Number(formEventRoomRate) * 0.06).toFixed(2)} tax, $
-                          {(Number(formEventRoomRate) * 0.2).toFixed(2)} gratuity)
+                          (+ ${eventRoomCharges.gratuity.toFixed(2)} gratuity, $
+                          {eventRoomCharges.tax.toFixed(2)} tax)
                         </span>
                       )}
                     </label>
@@ -459,6 +470,63 @@ export const CreateLeadModal: React.FC<CreateLeadModalProps> = ({
                       </label>
                     </div>
                   )}
+                </div>
+              </div>
+
+              {/* Derived from the rentals above rather than typed in, so it sits last
+                  as a read-only summary. */}
+              <div className="col-span-2">
+                <label className="block text-slate-600 font-bold mb-1">Revenue Potential ($)</label>
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-4 space-y-2">
+                  {formDetails && eventRoomCharges.rental > 0 && (
+                    <>
+                      <div className="flex justify-between text-slate-600">
+                        <span>Event room rental ({formDetails})</span>
+                        <span className="font-semibold text-slate-800">
+                          ${eventRoomCharges.rental.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>Gratuity ({Math.round(EVENT_ROOM_GRATUITY_RATE * 100)}%)</span>
+                        <span className="font-semibold text-slate-800">
+                          ${eventRoomCharges.gratuity.toFixed(2)}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-slate-600">
+                        <span>
+                          Tax ({Math.round(EVENT_ROOM_TAX_RATE * 100)}% on rental + gratuity)
+                        </span>
+                        <span className="font-semibold text-slate-800">
+                          ${eventRoomCharges.tax.toFixed(2)}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  {guestRoomsSubtotal > 0 && (
+                    <div className="flex justify-between text-slate-600">
+                      <span>Guest room blocks</span>
+                      <span className="font-semibold text-slate-800">
+                        ${guestRoomsSubtotal.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  {accessoriesSubtotal > 0 && (
+                    <div className="flex justify-between text-slate-600">
+                      <span>Accessories &amp; add-ons</span>
+                      <span className="font-semibold text-slate-800">
+                        ${accessoriesSubtotal.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                  <div className="flex justify-between items-center pt-2 border-t border-slate-200">
+                    <span className="text-slate-700 font-bold">Total Revenue Potential</span>
+                    <span className="text-emerald-600 font-bold text-base">
+                      ${(parseFloat(formRevenue) || 0).toFixed(2)}
+                    </span>
+                  </div>
+                  <p className="text-[11px] text-slate-500 pt-1">
+                    Calculated automatically from the room and block rentals above.
+                  </p>
                 </div>
               </div>
             </div>

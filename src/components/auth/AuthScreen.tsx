@@ -69,7 +69,7 @@ export const AuthScreen: React.FC<AuthScreenProps> = ({
 
         <div className="w-full max-w-md mx-auto my-auto">
           <h2 className="text-3xl font-extrabold text-slate-900 tracking-tight mb-2">
-            {authMode === 'signin' && 'Welcome Back'}
+            {authMode === 'signin' && 'Welcome'}
             {authMode === 'signup' && 'Create Account'}
             {authMode === 'forgot_password' && 'Reset Password'}
             {authMode === 'reset_password' && 'Set New Password'}
