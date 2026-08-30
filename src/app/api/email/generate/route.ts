@@ -43,6 +43,11 @@ export async function POST(request: Request) {
     }
     const correlationId = crypto.randomUUID();
     console.error(`[Error ${correlationId}] Failed to generate AI email::`, error);
+    // Upstream provider failures name the provider, status and model but no internals,
+    // so returning them turns a silent dead end into something actionable.
+    if (typeof error?.message === 'string' && /API returned status/.test(error.message)) {
+      return NextResponse.json({ error: error.message, correlationId }, { status: 502 });
+    }
     return NextResponse.json({ error: 'An unexpected server error occurred.', correlationId }, { status: 500 });
   }
 }
