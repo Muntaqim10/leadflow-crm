@@ -87,15 +87,16 @@ export async function getRows(tableName: string): Promise<RowData[]> {
 }
 
 export async function addRow(
-  tableName: string, 
-  data: Omit<RowData, 'id'> & Partial<Pick<RowData, 'id'>>
+  tableName: string,
+  data: Omit<RowData, 'id'> & Partial<Pick<RowData, 'id'>>,
+  useServiceRole = false
 ): Promise<RowData> {
   const id = data.id || crypto.randomUUID();
   const created_at = new Date().toISOString();
   const updated_at = created_at;
   const payload = { ...data, id, created_at, updated_at };
 
-  const supabase = await getSupabaseClient(false);
+  const supabase = await getSupabaseClient(useServiceRole);
   const { data: insertedData, error } = await withTimeout(
     supabase.from(tableName).insert(payload).select().single(), 
     8000

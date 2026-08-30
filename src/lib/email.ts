@@ -169,17 +169,35 @@ Output constraints:
     { temperature: 0.3 }
   )) || personalizedPrompt;
 
-  // 5. Log the generated email in database
-  const emailLogEntry = await addRow('email_log', {
-    lead_id: leadId,
-    template_type: determinedTemplateType,
-    generated_content: generatedContent,
-    was_edited_by_human: 'false',
-    sent_at: '',
-  });
+  // 5. Log the generated email in database.
+  //
+  // This is an internal audit record written on the user's behalf, so it uses the
+  // service role: the anon client is subject to row-level security on email_log and
+  // the insert is rejected under the current policy.
+  //
+  // The write is also non-fatal. The draft above is the thing the user waited for,
+  // and losing it because an audit row could not be stored trades a real result for
+  // a bookkeeping detail. A missing id degrades to an unlogged draft instead.
+  let logId = '';
+  try {
+    const emailLogEntry = await addRow(
+      'email_log',
+      {
+        lead_id: leadId,
+        template_type: determinedTemplateType,
+        generated_content: generatedContent,
+        was_edited_by_human: 'false',
+        sent_at: '',
+      },
+      true
+    );
+    logId = emailLogEntry.id;
+  } catch (error) {
+    console.error('Failed to write email_log entry; returning the draft unlogged:', error);
+  }
 
   return {
-    logId: emailLogEntry.id,
+    logId,
     content: generatedContent,
     templateType: determinedTemplateType,
   };
