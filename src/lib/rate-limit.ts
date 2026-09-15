@@ -9,8 +9,11 @@ if (process.env.UPSTASH_REDIS_REST_URL && process.env.UPSTASH_REDIS_REST_TOKEN) 
   });
 }
 
-// Global rate limiters (fallbacks to memory if no redis)
-const memoryCache = new Map<string, number>();
+// Global rate limiters (fallbacks to memory if no redis).
+// One entry per identifier: when the current window opened, and how many
+// requests landed in it. windowStart is never refreshed by later requests,
+// so a caller who keeps retrying still gets out once the window elapses.
+const memoryCache = new Map<string, { count: number; windowStart: number }>();
 
 export async function rateLimit(identifier: string, limit: number = 5, windowInSeconds: number = 60): Promise<boolean> {
   if (redis) {
@@ -32,27 +35,21 @@ export async function rateLimit(identifier: string, limit: number = 5, windowInS
   const now = Date.now();
   const windowMs = windowInSeconds * 1000;
   
-  // Clean up old entries (simplistic)
+  // Clean up expired windows (simplistic)
   if (Math.random() < 0.05) {
-    memoryCache.forEach((timestamp, key) => {
-      if (now - timestamp > windowMs) memoryCache.delete(key);
+    memoryCache.forEach((entry, key) => {
+      if (now - entry.windowStart > windowMs) memoryCache.delete(key);
     });
   }
 
-  const userKey = `rl_${identifier}`;
-  const countKey = `${userKey}_count`;
-  
-  const lastRequest = memoryCache.get(userKey) || 0;
-  let count = memoryCache.get(countKey) || 0;
+  const key = `rl_${identifier}`;
+  const entry = memoryCache.get(key);
 
-  if (now - lastRequest > windowMs) {
-    count = 1;
-  } else {
-    count += 1;
+  if (!entry || now - entry.windowStart > windowMs) {
+    memoryCache.set(key, { count: 1, windowStart: now });
+    return true;
   }
 
-  memoryCache.set(userKey, now);
-  memoryCache.set(countKey, count);
-
-  return count <= limit;
+  entry.count += 1;
+  return entry.count <= limit;
 }
