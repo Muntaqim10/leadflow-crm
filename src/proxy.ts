@@ -60,8 +60,8 @@ export default async function proxy(request: NextRequest) {
   // 2. Auth Protection for API Routes
   if (path.startsWith('/api/')) {
     // Exclude public auth routes and generic endpoints
-    if (path.startsWith('/api/auth/')) {
-      // Allow auth routes to proceed
+    if (path.startsWith('/api/auth/') || path.startsWith('/api/cron/')) {
+      // Allow auth routes to proceed; cron routes verify CRON_SECRET themselves
     } else {
       const token = request.cookies.get('auth_token')?.value;
 
