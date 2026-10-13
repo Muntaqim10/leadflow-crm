@@ -43,3 +43,6 @@ yarn-error.log*
 next-env.d.ts
 
 .vercel
+
+# scratch output from compiling a module for a one-off check
+.tmp-test/
