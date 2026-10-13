@@ -319,7 +319,7 @@ export default function App() {
   const [leadActivities, setLeadActivities] = useState<any[]>([]);
   const [newNoteText, setNewNoteText] = useState('');
   const [activitySaving, setActivitySaving] = useState(false);
-  const [leadDetailsTab, setLeadDetailsTab] = useState<'details' | 'timeline'>('details');
+  const [leadDetailsTab, setLeadDetailsTab] = useState<'details' | 'timeline' | 'messages'>('details');
 
   // Quick Book & Appointment Modal State
   const [isQuickBookingOpen, setIsQuickBookingOpen] = useState(false);

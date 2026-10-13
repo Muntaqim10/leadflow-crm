@@ -60,8 +60,9 @@ export default async function proxy(request: NextRequest) {
   // 2. Auth Protection for API Routes
   if (path.startsWith('/api/')) {
     // Exclude public auth routes and generic endpoints
-    if (path.startsWith('/api/auth/') || path.startsWith('/api/cron/')) {
-      // Allow auth routes to proceed; cron routes verify CRON_SECRET themselves
+    if (path.startsWith('/api/auth/') || path.startsWith('/api/cron/') || path === '/api/messages/webhook') {
+      // Allow auth routes to proceed. Cron routes verify CRON_SECRET and the Twilio
+      // webhook verifies X-Twilio-Signature, since neither can carry a session cookie.
     } else {
       const token = request.cookies.get('auth_token')?.value;
 

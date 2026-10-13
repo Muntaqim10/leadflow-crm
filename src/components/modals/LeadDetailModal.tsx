@@ -9,6 +9,7 @@ import {
   Plus
 } from 'lucide-react';
 import { Lead, User } from '@/types/crm';
+import { LeadMessages } from '@/components/common/LeadMessages';
 import {
   calculateLeadScore,
   getLeadBookingType,
@@ -24,8 +25,8 @@ interface LeadDetailModalProps {
   setSelectedLead: (lead: Lead | null) => void;
   isEditing: boolean;
   setIsEditing: (editing: boolean) => void;
-  leadDetailsTab: 'details' | 'timeline';
-  setLeadDetailsTab: (tab: 'details' | 'timeline') => void;
+  leadDetailsTab: 'details' | 'timeline' | 'messages';
+  setLeadDetailsTab: (tab: 'details' | 'timeline' | 'messages') => void;
   users: User[];
   canDeleteLeads: boolean;
   formClientName: string;
@@ -716,6 +717,16 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                     </span>
                   )}
                 </button>
+                <button
+                  onClick={() => setLeadDetailsTab('messages')}
+                  className={`pb-2 px-4 border-b-2 transition-all ${
+                    leadDetailsTab === 'messages'
+                      ? 'border-blue-600 text-blue-600 font-bold'
+                      : 'border-transparent text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  💬 Texts
+                </button>
               </div>
 
               {leadDetailsTab === 'details' ? (
@@ -925,6 +936,8 @@ export const LeadDetailModal: React.FC<LeadDetailModalProps> = ({
                     </div>
                   </div>
                 </div>
+              ) : leadDetailsTab === 'messages' ? (
+                <LeadMessages leadId={selectedLead.id} phone={selectedLead.phone} />
               ) : (
                 /* Timeline and Notes Tab Content */
                 <div className="space-y-4">
