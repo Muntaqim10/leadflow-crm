@@ -46,3 +46,6 @@ next-env.d.ts
 
 # scratch output from compiling a module for a one-off check
 .tmp-test/
+
+# agent handoff scratchpad — working notes, not project history
+.claude/handoffs.md

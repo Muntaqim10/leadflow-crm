@@ -23,4 +23,5 @@ No test runner exists. `npx tsc --noEmit` and `npm run lint` are the checks. For
 
 ## Conventions
 - Revenue math belongs in [src/lib/calculations.ts](src/lib/calculations.ts). It is currently duplicated into the create and detail modals — extend the lib and have callers use it rather than adding a fourth copy.
-- `agents/` holds the original planning and role docs. Useful as intent, stale on specifics (it still names Groq as the AI choice). Treat the code as truth.
+- Role subagents live in `.claude/agents/` (tech-lead, security-engineer, database-engineer, backend-engineer, frontend-engineer, qa-engineer, devops-engineer). Who owns what, and how they hand work to each other, is in [.claude/AGENT_ROLES.md](.claude/AGENT_ROLES.md).
+- `agents/` (no dot) holds the original planning and role docs. Useful as intent, stale on specifics (it still names Groq as the AI choice). Treat the code as truth.
